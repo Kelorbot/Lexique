@@ -22,10 +22,18 @@ répétition espacée.
 ## Comment ça marche
 
 - **Recherche** : choisis le sens, tape un mot, la traduction s’affiche et
-  s’ajoute au carnet.
+  s’ajoute au carnet. Chaque mot est enrichi automatiquement de **synonymes** et
+  d’**exemples de phrases** (via le dictionnaire anglais gratuit
+  [dictionaryapi.dev](https://dictionaryapi.dev/)).
 - **Carnet** : la liste de tous tes mots, avec ton score. Un mot passe en
-  « acquis » après 3 bonnes réponses.
-- **Révision** : des cartes où les mots que tu rates reviennent plus souvent.
+  « acquis » après 3 bonnes réponses. Déplie *Voir synonymes & exemples* pour
+  les détails. Tu peux aussi **ajouter une expression à la main** (avec ses
+  synonymes et un exemple) grâce au formulaire en haut du carnet.
+- **Révision** : des flashcards, avec deux modes au choix —
+  - **Adaptatif** : les mots que tu rates reviennent plus souvent ;
+  - **Aléatoire** : tirage uniforme parmi tous tes mots.
+
+  L’exemple d’utilisation, s’il existe, s’affiche au dos de la carte.
 
 ## Limites à connaître
 
