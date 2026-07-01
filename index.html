@@ -64,6 +64,41 @@
   .rate .yes{padding:12px 22px;border-radius:8px;border:none;background:var(--green);color:var(--paper);font-weight:700;cursor:pointer}
   .hint{color:var(--ink-soft);font-size:13px;margin-top:16px}
   .hidden{display:none}
+  /* Détails d'un mot : synonymes & exemples */
+  .details{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+  .details .label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);font-weight:700;margin:0 0 4px}
+  .syns{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+  .syn{font-size:13px;background:var(--gold-soft);color:var(--green-dark);
+    border-radius:999px;padding:3px 10px;font-family:var(--serif)}
+  .examples{margin:0;padding:0;list-style:none}
+  .examples li{font-family:var(--serif);font-size:15px;color:var(--ink);
+    border-left:3px solid var(--gold);padding:2px 0 2px 12px;margin-bottom:8px;line-height:1.4}
+  .card .ex{font-family:var(--serif);font-size:14px;color:var(--ink-soft);
+    font-style:italic;margin-top:14px;line-height:1.4}
+  /* Formulaire d'ajout manuel */
+  .addbox{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;margin-bottom:18px}
+  .addbox h3{font-family:var(--serif);font-size:17px;margin:0 0 10px;font-weight:700}
+  .addbox .fields{display:flex;flex-direction:column;gap:8px}
+  .addbox input,.addbox select,.addbox textarea{padding:9px 11px;font-size:15px;
+    border:1.5px solid var(--line);border-radius:7px;background:var(--paper);
+    color:var(--ink);outline:none;font-family:var(--sans);width:100%}
+  .addbox textarea{font-family:var(--serif);resize:vertical;min-height:44px}
+  .addbox .two{display:flex;gap:8px}
+  .addbox .two>*{flex:1}
+  .addbox .add-btn{padding:10px 16px;border-radius:7px;border:none;background:var(--green);
+    color:var(--paper);font-weight:700;font-size:14px;cursor:pointer;margin-top:2px}
+  .addbox summary{cursor:pointer;font-weight:700;font-family:var(--serif);font-size:17px;
+    list-style:none;display:flex;align-items:center;gap:6px}
+  .addbox summary::-webkit-details-marker{display:none}
+  .addbox summary::before{content:"＋";color:var(--gold);font-weight:700}
+  .addbox[open] summary::before{content:"－"}
+  .addbox .small{font-size:12px;color:var(--ink-soft);margin:0 0 10px}
+  /* Sélecteur de mode de révision */
+  .modes{display:flex;gap:8px;justify-content:center;margin-bottom:8px}
+  .modes button{padding:6px 14px;border-radius:999px;border:1.5px solid var(--line);
+    background:var(--card);color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer}
+  .modes button.active{background:var(--green);border-color:var(--green);color:var(--paper)}
 </style>
 </head>
 <body>
@@ -105,12 +140,34 @@
   <!-- CARNET -->
 
   <section id="tableau" class="hidden">
+    <details class="addbox">
+      <summary>Ajouter une expression à la main</summary>
+      <p class="small">Pour les mots ou expressions que tu veux ajouter toi-même, sans passer par la recherche.</p>
+      <div class="fields">
+        <input id="add-src" placeholder="Mot ou expression…" autocomplete="off" />
+        <input id="add-tr" placeholder="Traduction…" autocomplete="off" />
+        <div class="two">
+          <select id="add-dir">
+            <option value="en-fr">Anglais → Français</option>
+            <option value="fr-en">Français → Anglais</option>
+          </select>
+          <input id="add-syn" placeholder="Synonymes (séparés par des virgules)" autocomplete="off" />
+        </div>
+        <textarea id="add-ex" placeholder="Exemple d'utilisation (facultatif)"></textarea>
+        <div id="add-err" class="err hidden"></div>
+        <button id="add-go" class="add-btn">Ajouter au carnet</button>
+      </div>
+    </details>
     <div id="list"></div>
   </section>
 
   <!-- RÉVISION -->
 
   <section id="revision" class="hidden center">
+    <div class="modes">
+      <button data-mode="adaptatif" class="active">Adaptatif</button>
+      <button data-mode="aleatoire">Aléatoire</button>
+    </div>
     <div id="rev-area"></div>
   </section>
 </main>
@@ -120,6 +177,7 @@ const KEY = "lexique-data-v1";
 let words = [];
 let direction = "en-fr";
 let revCard = null, revealed = false, revDone = 0;
+let revMode = "adaptatif";
 
 // ── Mémoire (localStorage) ──────────────────────────────
 function load(){
@@ -135,6 +193,32 @@ function refreshStats(){
   document.getElementById("s-total").textContent = words.length;
   document.getElementById("s-ok").textContent = ok;
   document.getElementById("s-todo").textContent = words.length - ok;
+}
+
+// ── Enrichissement : synonymes & exemples (dictionnaire anglais gratuit) ──
+// dictionaryapi.dev ne couvre que l'anglais ; on interroge donc le côté anglais.
+async function fetchDictInfo(word){
+  const info = { synonyms: [], examples: [] };
+  const term = (word || "").trim().split(/\s+/)[0]; // un seul mot pour l'API
+  if(!term) return info;
+  try{
+    const res = await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/" +
+      encodeURIComponent(term));
+    if(!res.ok) return info;
+    const data = await res.json();
+    if(!Array.isArray(data)) return info;
+    const syns = new Set(), exs = new Set();
+    data.forEach(entry => (entry.meanings || []).forEach(m => {
+      (m.synonyms || []).forEach(s => syns.add(s));
+      (m.definitions || []).forEach(d => {
+        (d.synonyms || []).forEach(s => syns.add(s));
+        if(d.example) exs.add(d.example);
+      });
+    }));
+    info.synonyms = [...syns].slice(0, 6);
+    info.examples = [...exs].slice(0, 3);
+  }catch(e){ /* enrichissement optionnel : on ignore les erreurs */ }
+  return info;
 }
 
 // ── Traduction via MyMemory (gratuit, sans clé) ─────────
@@ -161,11 +245,17 @@ async function translate(){
       .filter(t => t && t.toLowerCase() !== translation.toLowerCase())
       .slice(0, 2);
 
+    // synonymes & exemples : on interroge le dictionnaire sur le mot anglais
+    const englishWord = direction === "en-fr" ? q : translation;
+    const dict = await fetchDictInfo(englishWord);
+
     const entry = {
       id: Date.now(),
       source: q,
       translation,
       alternatives: [...new Set(alts)],
+      synonyms: dict.synonyms,
+      examples: dict.examples,
       direction,
       date: new Date().toISOString(),
       correct: 0, wrong: 0
@@ -189,6 +279,20 @@ async function translate(){
 
 function flag(d){ return d === "en-fr" ? "EN → FR" : "FR → EN"; }
 
+// bloc synonymes + exemples réutilisable (recherche & carnet)
+function detailsHtml(w){
+  const syns = (w.synonyms || []);
+  const exs = (w.examples || []);
+  if(!syns.length && !exs.length) return "";
+  const synBlock = syns.length ? `
+    <p class="label">Synonymes</p>
+    <div class="syns">${syns.map(s => `<span class="syn">${escapeHtml(s)}</span>`).join("")}</div>` : "";
+  const exBlock = exs.length ? `
+    <p class="label">Exemples d'utilisation</p>
+    <ul class="examples">${exs.map(e => `<li>${escapeHtml(e)}</li>`).join("")}</ul>` : "";
+  return `<div class="details">${synBlock}${exBlock}</div>`;
+}
+
 function renderResult(w){
   const alts = w.alternatives.length
     ? `<span style="font-size:15px;color:var(--ink-soft);font-weight:400"> · ${w.alternatives.join(" · ")}</span>`
@@ -201,6 +305,7 @@ function renderResult(w){
       </div>
       <div class="trans">${escapeHtml(w.translation)}${alts}</div>
       <p class="saved">✓ Enregistré dans le carnet</p>
+      ${detailsHtml(w)}
     </article>`;
 }
 
@@ -214,12 +319,15 @@ function renderList(){
   el.innerHTML = words.map(w => {
     const ok = isAcquired(w);
     const score = ok ? "acquis" : `${w.correct}✓ ${w.wrong}✗`;
+    const details = detailsHtml(w);
+    const extra = details ? ` · ${((w.synonyms||[]).length)} syn. ${((w.examples||[]).length)} ex.` : "";
     return `<div class="row ${ok ? "ok" : ""}">
-      <div style="min-width:0">
+      <div style="min-width:0;flex:1">
         <div><span class="src">${escapeHtml(w.source)}</span>
           <span style="color:var(--ink-soft)"> — </span>
           <span class="tr">${escapeHtml(w.translation)}</span></div>
-        <div class="meta">${flag(w.direction)} · ${new Date(w.date).toLocaleDateString("fr-FR")} · ${score}</div>
+        <div class="meta">${flag(w.direction)} · ${new Date(w.date).toLocaleDateString("fr-FR")} · ${score}${extra}</div>
+        ${details ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12px;color:var(--green);font-weight:600">Voir synonymes & exemples</summary>${details}</details>` : ""}
       </div>
       <button class="del" data-id="${w.id}" aria-label="Supprimer">✕</button>
     </div>`;
@@ -228,9 +336,49 @@ function renderList(){
     b.onclick = () => { words = words.filter(w => w.id != b.dataset.id); save(); renderList(); refreshStats(); });
 }
 
+// ── Ajout manuel d'une expression ───────────────────────
+function addManual(){
+  const src = document.getElementById("add-src").value.trim();
+  const tr = document.getElementById("add-tr").value.trim();
+  const dir = document.getElementById("add-dir").value;
+  const synRaw = document.getElementById("add-syn").value.trim();
+  const ex = document.getElementById("add-ex").value.trim();
+  const errBox = document.getElementById("add-err");
+  if(!src || !tr){
+    errBox.textContent = "Renseigne au moins le mot et sa traduction.";
+    errBox.classList.remove("hidden");
+    return;
+  }
+  errBox.classList.add("hidden");
+  const synonyms = synRaw ? synRaw.split(",").map(s => s.trim()).filter(Boolean) : [];
+  const entry = {
+    id: Date.now(),
+    source: src,
+    translation: tr,
+    alternatives: [],
+    synonyms,
+    examples: ex ? [ex] : [],
+    direction: dir,
+    date: new Date().toISOString(),
+    correct: 0, wrong: 0
+  };
+  // remplace si l'expression existe déjà dans le même sens
+  words = words.filter(w =>
+    !(w.source.toLowerCase() === entry.source.toLowerCase() && w.direction === dir));
+  words.unshift(entry);
+  save();
+  // remise à zéro du formulaire
+  ["add-src","add-tr","add-syn","add-ex"].forEach(id => document.getElementById(id).value = "");
+  renderList();
+  refreshStats();
+}
+
 // ── Révision (répétition espacée simple) ────────────────
 function pickCard(list){
   if(!list.length) return null;
+  // mode aléatoire : tirage uniforme, sans pondération
+  if(revMode === "aleatoire") return list[Math.floor(Math.random()*list.length)];
+  // mode adaptatif : les mots ratés reviennent plus souvent
   const weights = list.map(w => 1 + Math.max(0, 2*w.wrong - w.correct));
   const total = weights.reduce((a,b)=>a+b,0);
   let r = Math.random()*total;
@@ -248,17 +396,22 @@ function renderRevision(){
     el.innerHTML = `<p class="empty">Ajoute d'abord des mots via la recherche pour lancer une révision.</p>`;
     return;
   }
+  const ex = (revCard.examples && revCard.examples.length)
+    ? `<div class="ex">« ${escapeHtml(revCard.examples[0])} »</div>` : "";
   const back = revealed
-    ? `<div class="rev">${escapeHtml(revCard.translation)}</div>`
+    ? `<div class="rev">${escapeHtml(revCard.translation)}</div>${ex}`
     : `<p class="hint">Touche la carte pour révéler la traduction</p>`;
   const rate = revealed
     ? `<div class="rate">
          <button class="no" data-ok="0">À revoir</button>
          <button class="yes" data-ok="1">Je savais</button>
        </div>` : "";
+  const caption = revMode === "aleatoire"
+    ? "tirage aléatoire parmi tous tes mots"
+    : "les mots ratés reviennent plus souvent";
   el.innerHTML = `
     <p style="font-size:12px;color:var(--ink-soft);letter-spacing:.06em">
-      CARTE ${revDone+1} · les mots ratés reviennent plus souvent</p>
+      CARTE ${revDone+1} · ${caption}</p>
     <div class="card" id="flip">
       <span class="flag">${flag(revCard.direction)}</span>
       <div class="word">${escapeHtml(revCard.source)}</div>
@@ -302,6 +455,17 @@ document.querySelectorAll(".dir button").forEach(b => b.onclick = () => {
 });
 document.getElementById("go").onclick = translate;
 document.getElementById("q").addEventListener("keydown", e => { if(e.key === "Enter") translate(); });
+
+// Ajout manuel dans le carnet
+document.getElementById("add-go").onclick = addManual;
+
+// Sélecteur de mode de révision (adaptatif / aléatoire)
+document.querySelectorAll(".modes button").forEach(b => b.onclick = () => {
+  revMode = b.dataset.mode;
+  document.querySelectorAll(".modes button").forEach(x => x.classList.remove("active"));
+  b.classList.add("active");
+  startRevision();
+});
 
 load();
 refreshStats();
