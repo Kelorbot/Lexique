@@ -37,17 +37,29 @@ elle est pensée pour un usage strictement personnel, sur une URL que tu es seul
 
 - **Ajouter des images** : bouton **+**, glisser-déposer sur la scène, ou
   coller (Ctrl/Cmd+V) une image copiée. Chaque image passe dans une file
-  visible en bas à droite pendant son analyse.
-- **Analyse automatique** : l'image est envoyée à Gemini avec l'arborescence
-  actuelle des branches. Le modèle renvoie un titre, la transcription LaTeX
-  complète, et un chemin de classement (ex. `Analyse > Séries entières`). Les
-  branches et sous-branches manquantes sont créées automatiquement ; les
+  visible en bas à droite pendant son analyse. Tu peux **retirer une image de
+  la file** (croix ✕) tant qu'elle n'est pas traitée — utile pour ne pas
+  solliciter l'API inutilement — et **vider** les analyses terminées.
+- **Filtrage automatique des maths** : avant toute transcription, le modèle
+  vérifie que l'image relève bien des mathématiques. Si c'est une autre matière
+  (physique, chimie, anglais, philosophie…), l'image est **ignorée** (jamais
+  ajoutée à l'arbre) et signalée comme telle dans la file.
+- **Analyse automatique** : l'image reconnue comme mathématique est transcrite
+  fidèlement en LaTeX (texte en français correct, formules valides), reçoit un
+  titre court, et est classée dans l'arborescence (ex. `Analyse > Séries
+  entières`). Les branches manquantes sont créées automatiquement ; les
   branches existantes sont réutilisées si le sujet correspond.
-- **Navigation en arbre** : un tronc central représente la branche courante ;
-  ses sous-branches et ses images (feuilles) se déploient tout autour. Clique
-  sur une branche pour y entrer, sur une image pour ouvrir sa fiche détaillée.
-  Le fil d'Ariane en haut permet de remonter à tout niveau, et le bouton maison
-  ramène directement au centre.
+- **Navigation en arbre** : « Mathématiques » est au centre ; branches et
+  sous-branches rayonnent autour, toutes visibles d'un coup. **Zoome/dézoome**
+  à la molette, au pincement (mobile) ou avec les boutons en bas à gauche, et
+  **déplace-toi** en faisant glisser le fond. Le bouton « vue d'ensemble »
+  recadre tout l'arbre. Clique une branche pour la sélectionner, une image pour
+  ouvrir sa fiche.
+- **Branches à la main** : l'icône branche (en haut) ou le bouton
+  **＋ Sous-branche** de la barre d'actions créent une branche ou sous-branche
+  manuellement. Une branche sélectionnée peut aussi être **renommée**,
+  **réduite/déployée** (pour masquer son contenu) ou **supprimée** (avec tout
+  son sous-arbre).
 - **Fiche d'une image** : image source, titre et transcription LaTeX rendus
   (dans un panneau légèrement transparent), bouton pour copier le LaTeX brut,
   et un mode édition pour corriger le titre, le LaTeX ou la branche si le
