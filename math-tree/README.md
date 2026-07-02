@@ -49,12 +49,20 @@ elle est pensée pour un usage strictement personnel, sur une URL que tu es seul
   titre court, et est classée dans l'arborescence (ex. `Analyse > Séries
   entières`). Les branches manquantes sont créées automatiquement ; les
   branches existantes sont réutilisées si le sujet correspond.
-- **Navigation en arbre** : « Mathématiques » est au centre ; branches et
-  sous-branches rayonnent autour, toutes visibles d'un coup. **Zoome/dézoome**
-  à la molette, au pincement (mobile) ou avec les boutons en bas à gauche, et
-  **déplace-toi** en faisant glisser le fond. Le bouton « vue d'ensemble »
-  recadre tout l'arbre. Clique une branche pour la sélectionner, une image pour
-  ouvrir sa fiche.
+- **Navigation en arbre** : « Mathématiques » est au centre ; branches,
+  sous-branches **et images** rayonnent autour, toutes visibles d'un coup (les
+  images apparaissent directement sur la carte, sans avoir à ouvrir une
+  branche). **Zoome/dézoome** à la molette, au pincement (mobile) ou avec les
+  boutons en bas à gauche, et **déplace-toi** en faisant glisser le fond. Le
+  bouton « vue d'ensemble » recadre tout l'arbre. Clique une branche pour la
+  sélectionner, une image pour ouvrir sa fiche.
+- **Couleurs par domaine** : chaque grand domaine (Algèbre, Analyse,
+  Géométrie…) a sa propre couleur, héritée par toutes ses sous-branches et ses
+  images — on repère d'un coup d'œil à quel champ appartient chaque bulle.
+- **Personnalisation** : **déplace n'importe quelle bulle** en la faisant
+  glisser (la position est mémorisée). Le bouton **réorganiser** (icône en bas
+  à gauche) remet un **espacement automatique harmonieux** et efface les
+  déplacements manuels.
 - **Branches à la main** : l'icône branche (en haut) ou le bouton
   **＋ Sous-branche** de la barre d'actions créent une branche ou sous-branche
   manuellement. Une branche sélectionnée peut aussi être **renommée**,

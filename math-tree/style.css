@@ -228,8 +228,10 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
 }
+.node:active { cursor: grabbing; }
 .node .bubble {
   width: var(--node-size);
   height: var(--node-size);
@@ -255,29 +257,29 @@ body {
 }
 .node.root .label { font-size: 15px; color: var(--text); font-weight: 600; max-width: 200px; }
 
-/* Branches */
+/* Branches — teintées par domaine via --field-* (fallback bleu accent) */
 .node.branch .bubble {
   width: var(--node-size-branch);
   height: var(--node-size-branch);
-  background: linear-gradient(160deg, rgba(124,158,255,0.22), rgba(124,158,255,0.06));
-  border: 1px solid rgba(124,158,255,0.35);
+  background: linear-gradient(160deg, var(--field-soft, rgba(124,158,255,0.22)), rgba(255,255,255,0.02));
+  border: 1px solid var(--field-strong, rgba(124,158,255,0.35));
   box-shadow: 0 8px 24px rgba(0,0,0,0.25);
 }
-.node.branch:hover .bubble { box-shadow: 0 10px 30px rgba(124,158,255,0.22); }
-.node.branch .bubble svg { width: 30px; height: 30px; fill: var(--accent-strong); }
+.node.branch:hover .bubble { box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+.node.branch .bubble svg { width: 30px; height: 30px; fill: var(--field, var(--accent-strong)); }
 .node.branch.collapsed .bubble { border-style: dashed; }
 
 .node.selected .bubble {
-  border-color: var(--accent-strong);
-  box-shadow: 0 0 0 3px rgba(124,158,255,0.28), 0 10px 30px rgba(124,158,255,0.3);
+  border-color: var(--field, var(--accent-strong));
+  box-shadow: 0 0 0 3px var(--field-soft, rgba(124,158,255,0.28)), 0 10px 30px rgba(0,0,0,0.35);
 }
 
 .count-badge {
   position: absolute;
   bottom: 3px; right: 3px;
   background: var(--bg-0);
-  border: 1px solid rgba(124,158,255,0.4);
-  color: var(--accent-strong);
+  border: 1px solid var(--field-strong, rgba(124,158,255,0.4));
+  color: var(--field, var(--accent-strong));
   font-size: 10px;
   font-weight: 700;
   border-radius: 999px;
@@ -287,13 +289,13 @@ body {
   padding: 0 4px;
 }
 
-/* Feuilles (images) */
+/* Feuilles (images) — anneau à la couleur de leur domaine */
 .node.leaf .bubble {
   background: var(--bg-1);
-  border: 1px solid var(--border);
+  border: 2px solid var(--field-strong, var(--border));
   box-shadow: 0 6px 18px rgba(0,0,0,0.3);
 }
-.node.leaf:hover .bubble { border-color: rgba(99,230,190,0.5); }
+.node.leaf:hover .bubble { border-color: var(--field, rgba(99,230,190,0.7)); }
 .node.leaf .bubble img { width: 100%; height: 100%; object-fit: cover; }
 .node.leaf .bubble .leaf-fallback { color: var(--leaf); font-size: 26px; }
 
