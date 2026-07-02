@@ -1,5 +1,9 @@
 # Lexique — carnet de vocabulaire bilingue
 
+> Ce dépôt héberge aussi une seconde application indépendante : **[Arbre
+> Mathématique](./math-tree/)**, pour classer des photos d'exercices de maths
+> en LaTeX au sein d'une arborescence de branches. Voir `math-tree/README.md`.
+
 Petite application web pour chercher des traductions **anglais ⇄ français**, les
 sauvegarder automatiquement dans un carnet, et les réviser en flashcards avec
 répétition espacée.

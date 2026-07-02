@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Arbre Mathématique</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌳</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Barre du haut -->
+  <header class="topbar">
+    <button class="icon-btn" id="btn-home" title="Retour au centre" aria-label="Retour au centre">
+      <svg viewBox="0 0 24 24"><path d="M12 3.2 2.5 11h2.7v9h5.2v-6h3.2v6h5.2v-9h2.7z"/></svg>
+    </button>
+
+    <nav id="breadcrumb" class="breadcrumb" aria-label="Fil d'Ariane"></nav>
+
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 1 0-.7.7l.3.3v.8l5 5 1.5-1.5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+      <input id="search-input" type="text" placeholder="Rechercher une notion, un titre…" autocomplete="off" />
+    </div>
+
+    <button class="icon-btn" id="btn-settings" title="Réglages" aria-label="Réglages">
+      <svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 0 0 .1-1 7.6 7.6 0 0 0-.1-1l2.1-1.6a.5.5 0 0 0 .1-.7l-2-3.4a.5.5 0 0 0-.6-.2l-2.5 1a7.4 7.4 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.4h-4a.5.5 0 0 0-.5.4l-.4 2.6c-.6.2-1.2.6-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.4a.5.5 0 0 0 .1.7L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.7l2 3.4c.1.2.4.3.6.2l2.5-1c.5.4 1.1.8 1.7 1l.4 2.6c0 .2.3.4.5.4h4c.2 0 .5-.2.5-.4l.4-2.6c.6-.2 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.4a.5.5 0 0 0-.1-.7zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
+    </button>
+
+    <button class="icon-btn accent" id="btn-add" title="Ajouter des images" aria-label="Ajouter des images">
+      <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
+    </button>
+  </header>
+
+  <!-- Résultats de recherche -->
+  <div id="search-results" class="search-results hidden"></div>
+
+  <!-- Zone de l'arbre -->
+  <main id="tree-stage" class="tree-stage">
+    <svg id="branch-svg" class="branch-svg"></svg>
+    <div id="tree-nodes" class="tree-nodes"></div>
+    <div id="empty-hint" class="empty-hint hidden">
+      <p>Ta branche racine attend ses premières feuilles.</p>
+      <p>Clique sur <strong>+</strong> pour envoyer une photo d'exercice, de cours ou de notes.</p>
+    </div>
+  </main>
+
+  <!-- File d'import -->
+  <div id="upload-tray" class="upload-tray hidden">
+    <div class="upload-tray-head">
+      <span>Analyse en cours</span>
+      <button class="icon-btn small" id="btn-collapse-tray" title="Réduire">
+        <svg viewBox="0 0 24 24"><path d="M7 14l5-5 5 5z"/></svg>
+      </button>
+    </div>
+    <div id="upload-list" class="upload-list"></div>
+  </div>
+
+  <input type="file" id="file-input" accept="image/*" multiple hidden />
+
+  <!-- Modal détail d'une entrée -->
+  <div id="modal-entry" class="modal hidden">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-panel entry-panel">
+      <button class="icon-btn small modal-close" data-close aria-label="Fermer">
+        <svg viewBox="0 0 24 24"><path d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7l-1.4-1.4L9.2 12 2.9 5.7l1.4-1.4L10.6 10.6l6.3-6.3z"/></svg>
+      </button>
+      <div class="entry-body">
+        <div class="entry-image-col">
+          <img id="entry-image" alt="Image source" />
+          <div class="entry-path" id="entry-path"></div>
+        </div>
+        <div class="entry-info-col">
+          <div class="entry-title-wrap">
+            <h2 id="entry-title" class="katex-render"></h2>
+            <button class="icon-btn small" id="btn-edit-entry" title="Modifier">
+              <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zm17.7-10.2a1 1 0 0 0 0-1.42l-2.34-2.34a1 1 0 0 0-1.42 0l-1.83 1.83 3.75 3.75z"/></svg>
+            </button>
+          </div>
+          <div class="glass-panel" id="entry-latex-render"></div>
+          <div class="entry-actions">
+            <button class="btn ghost" id="btn-copy-latex">Copier le LaTeX</button>
+            <button class="btn ghost" id="btn-toggle-source">Voir la source</button>
+            <button class="btn danger" id="btn-delete-entry">Supprimer</button>
+          </div>
+          <pre id="entry-latex-source" class="latex-source hidden"></pre>
+
+          <div id="entry-edit-form" class="entry-edit-form hidden">
+            <label>Titre (LaTeX autorisé)
+              <input id="edit-title" type="text" />
+            </label>
+            <label>Contenu LaTeX
+              <textarea id="edit-latex" rows="8"></textarea>
+            </label>
+            <label>Branche (chemin séparé par « > »)
+              <input id="edit-path" type="text" placeholder="Analyse > Séries entières" />
+            </label>
+            <div class="entry-actions">
+              <button class="btn primary" id="btn-save-entry">Enregistrer</button>
+              <button class="btn ghost" id="btn-cancel-edit">Annuler</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal réglages -->
+  <div id="modal-settings" class="modal hidden">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-panel settings-panel">
+      <button class="icon-btn small modal-close" data-close aria-label="Fermer">
+        <svg viewBox="0 0 24 24"><path d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7l-1.4-1.4L9.2 12 2.9 5.7l1.4-1.4L10.6 10.6l6.3-6.3z"/></svg>
+      </button>
+      <h2>Réglages</h2>
+
+      <label class="field">
+        Clé API Anthropic (Claude)
+        <input id="settings-api-key" type="password" placeholder="sk-ant-…" autocomplete="off" />
+      </label>
+      <p class="hint">Stockée uniquement dans le stockage local de ton navigateur. Elle n'est jamais envoyée ailleurs qu'à l'API Anthropic, directement depuis ton appareil.</p>
+
+      <label class="field">
+        Modèle
+        <input id="settings-model" type="text" placeholder="claude-sonnet-4-5-20250929" />
+      </label>
+      <p class="hint">Identifiant du modèle Claude à utiliser (avec vision). Ajuste-le si Anthropic publie un nouvel identifiant.</p>
+
+      <div class="settings-actions">
+        <button class="btn primary" id="btn-save-settings">Enregistrer</button>
+      </div>
+
+      <hr />
+
+      <h3>Sauvegarde</h3>
+      <p class="hint">Toutes les données (images + arborescence) vivent dans ce navigateur. Exporte régulièrement pour ne rien perdre.</p>
+      <div class="settings-actions">
+        <button class="btn ghost" id="btn-export">Exporter (JSON)</button>
+        <button class="btn ghost" id="btn-import">Importer un fichier</button>
+        <input type="file" id="import-file" accept="application/json" hidden />
+      </div>
+
+      <hr />
+      <h3>Zone danger</h3>
+      <div class="settings-actions">
+        <button class="btn danger" id="btn-reset-all">Tout effacer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
