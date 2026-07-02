@@ -397,6 +397,141 @@ async function classifyImage(base64, mediaType) {
   };
 }
 
+// ---------- Fil de discussion IA (par image) ----------
+
+async function getImageBase64(entryId) {
+  const rec = await MathTreeDB.get('images', entryId);
+  if (!rec || !rec.blob) return null;
+  return blobToBase64(rec.blob);
+}
+
+function chatSystemPrompt(entry) {
+  return [
+    "Tu es un tuteur de mathématiques bienveillant et rigoureux.",
+    "Ci-dessous : l'image d'un document de mathématiques (exercice, cours ou notes) et sa transcription LaTeX.",
+    "L'élève va te poser des questions à son sujet. Selon ce qu'il demande :",
+    "- corrige ses erreurs et explique pourquoi ;",
+    "- donne des indications progressives (sans tout résoudre d'emblée s'il demande juste un indice) ;",
+    "- détaille une méthode ou une preuve si on te le demande.",
+    "Réponds toujours en FRANÇAIS clair, avec les formules en LaTeX ($ ... $ en ligne, \\[ ... \\] en bloc).",
+    "Reste centré sur ce document précis.",
+    "",
+    "Transcription LaTeX du document :",
+    entry.latex || '(vide)',
+  ].join('\n');
+}
+
+async function chatWithGemini(entry, imageBase64, history) {
+  if (!state.apiKey) throw new Error('Clé API manquante — ouvre les réglages.');
+  const model = state.model || DEFAULT_MODEL;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+
+  const contents = [];
+  const firstParts = [{ text: chatSystemPrompt(entry) }];
+  if (imageBase64) firstParts.push({ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } });
+  contents.push({ role: 'user', parts: firstParts });
+  contents.push({ role: 'model', parts: [{ text: "D'accord, j'ai le document sous les yeux. Quelle est ta question ?" }] });
+  for (const m of history) {
+    contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.text }] });
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': state.apiKey },
+    body: JSON.stringify({ contents, generationConfig: { temperature: 0.4 } }),
+  });
+  if (!res.ok) {
+    let msg = res.statusText;
+    try { const errBody = await res.json(); msg = errBody.error?.message || msg; } catch (e) { /* ignore */ }
+    throw new Error(`Erreur API (${res.status}) : ${msg}`);
+  }
+  const data = await res.json();
+  if (!data.candidates || !data.candidates.length) {
+    const reason = data.promptFeedback?.blockReason || 'raison inconnue';
+    throw new Error(`Réponse vide ou bloquée (${reason}).`);
+  }
+  return (data.candidates[0].content?.parts || []).map(p => p.text || '').join('').trim();
+}
+
+function renderChat(entry) {
+  const box = $('chat-messages');
+  box.innerHTML = '';
+  const msgs = entry.messages || [];
+  if (msgs.length === 0) {
+    box.innerHTML = '<div class="chat-empty">Aucun message. Pose une question sur cette image : correction, indication, méthode…</div>';
+    return;
+  }
+  for (const m of msgs) {
+    const el = document.createElement('div');
+    el.className = 'chat-msg ' + (m.role === 'assistant' ? 'assistant' : 'user');
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble';
+    renderMathText(bubble, m.text);
+    el.appendChild(bubble);
+    box.appendChild(el);
+  }
+  box.scrollTop = box.scrollHeight;
+}
+
+function appendPendingBubble() {
+  const box = $('chat-messages');
+  const empty = box.querySelector('.chat-empty');
+  if (empty) empty.remove();
+  const el = document.createElement('div');
+  el.className = 'chat-msg assistant pending';
+  el.innerHTML = '<div class="chat-bubble"><span class="spinner"></span> L\'IA réfléchit…</div>';
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  return el;
+}
+
+async function sendChatMessage() {
+  const entry = state.entries.find(e => e.id === currentEntryId);
+  if (!entry) return;
+  const input = $('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  if (!state.apiKey) { showToast('Ajoute ta clé API Gemini dans les réglages.'); return; }
+
+  if (!entry.messages) entry.messages = [];
+  entry.messages.push({ role: 'user', text, ts: Date.now() });
+  await MathTreeDB.put('entries', entry);
+  input.value = '';
+  input.style.height = 'auto';
+  renderChat(entry);
+
+  const sendBtn = $('chat-send');
+  sendBtn.disabled = true;
+  const pending = appendPendingBubble();
+
+  try {
+    const imageBase64 = await getImageBase64(entry.id);
+    const answer = await chatWithGemini(entry, imageBase64, entry.messages);
+    entry.messages.push({ role: 'assistant', text: answer, ts: Date.now() });
+    await MathTreeDB.put('entries', entry);
+    renderChat(entry);
+  } catch (err) {
+    pending.remove();
+    const el = document.createElement('div');
+    el.className = 'chat-msg assistant';
+    el.innerHTML = `<div class="chat-bubble error"></div>`;
+    el.querySelector('.chat-bubble').textContent = err.message || "Échec de la réponse.";
+    $('chat-messages').appendChild(el);
+    // On retire le dernier message utilisateur non répondu pour pouvoir réessayer proprement.
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+async function clearChat() {
+  const entry = state.entries.find(e => e.id === currentEntryId);
+  if (!entry || !entry.messages || entry.messages.length === 0) return;
+  if (!confirm('Effacer tout le fil de discussion de cette image ?')) return;
+  entry.messages = [];
+  await MathTreeDB.put('entries', entry);
+  renderChat(entry);
+}
+
 // ---------- File d'upload ----------
 
 function setTrayVisible(visible) {
@@ -540,7 +675,7 @@ async function processQueue() {
         const branchId = await resolvePath(result.path);
         const entryId = uuid();
         await MathTreeDB.put('images', { id: entryId, blob: resized.blob });
-        const entry = { id: entryId, branchId, title: result.title, latex: result.latex, createdAt: Date.now() };
+        const entry = { id: entryId, branchId, title: result.title, latex: result.latex, createdAt: Date.now(), messages: [] };
         await MathTreeDB.put('entries', entry);
         state.entries.push(entry);
         next.status = 'done';
@@ -1071,6 +1206,10 @@ async function openEntryModal(entryId) {
   $('btn-toggle-source').textContent = 'Voir la source';
   $('entry-edit-form').classList.add('hidden');
 
+  $('chat-input').value = '';
+  $('chat-input').style.height = 'auto';
+  renderChat(entry);
+
   $('modal-entry').classList.remove('hidden');
 }
 
@@ -1196,7 +1335,7 @@ async function importData(file) {
   for (const e of payload.entries) {
     let newId = e.id;
     if (state.entries.some(existing => existing.id === e.id)) newId = uuid();
-    const entry = { id: newId, branchId: e.branchId, title: e.title, latex: e.latex, createdAt: e.createdAt || Date.now() };
+    const entry = { id: newId, branchId: e.branchId, title: e.title, latex: e.latex, createdAt: e.createdAt || Date.now(), messages: Array.isArray(e.messages) ? e.messages : [] };
     if (e.imageBase64) {
       const blob = base64ToBlob(e.imageBase64, e.imageType || 'image/jpeg');
       await MathTreeDB.put('images', { id: newId, blob });
@@ -1381,6 +1520,18 @@ function bindEvents() {
   $('btn-cancel-edit').addEventListener('click', () => $('entry-edit-form').classList.add('hidden'));
   $('btn-save-entry').addEventListener('click', saveEditForm);
   $('btn-delete-entry').addEventListener('click', deleteCurrentEntry);
+
+  // Fil de discussion
+  $('chat-send').addEventListener('click', sendChatMessage);
+  $('btn-clear-chat').addEventListener('click', clearChat);
+  const chatInput = $('chat-input');
+  chatInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+  });
+  chatInput.addEventListener('input', () => {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
+  });
 
   // Sauvegarde
   $('btn-export').addEventListener('click', exportData);
