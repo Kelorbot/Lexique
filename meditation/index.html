@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Méditation — Studio audio</title>
+<meta name="description" content="Studio de méditation personnel : import audio flexible, mixage multi-couches, boucle aléatoire, minuteries et guide de respiration.">
+<meta name="theme-color" content="#0b1120">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%231c2a4a%22/><circle cx=%2250%22 cy=%2250%22 r=%2226%22 fill=%22%23f2c879%22/></svg>">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-glyph" aria-hidden="true">◐</span>
+      <div>
+        <h1>Studio de méditation</h1>
+        <p class="tagline">Ta bibliothèque, ton mixage, ton silence.</p>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Navigation principale">
+      <button class="tab-btn active" data-view="library">Bibliothèque</button>
+      <button class="tab-btn" data-view="mixer">Mixage</button>
+      <button class="tab-btn" data-view="timers">Minuteries</button>
+      <button class="tab-btn" data-view="breathing">Respiration</button>
+      <button class="tab-btn" data-view="presets">Presets</button>
+      <button class="tab-btn icon-only" id="btn-help" title="Raccourcis clavier (touche ?)" aria-label="Aide">?</button>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- ============================= BIBLIOTHÈQUE ============================= -->
+    <section id="view-library" class="view active">
+      <div class="panel import-panel">
+        <h2>Importer de l'audio</h2>
+        <div id="dropzone" class="dropzone" tabindex="0">
+          <p><strong>Glisse-dépose</strong> un ou plusieurs fichiers audio ici</p>
+          <p class="muted">ou</p>
+          <button id="btn-browse" class="btn primary">Parcourir mes fichiers</button>
+          <input type="file" id="file-input" accept="audio/*" multiple hidden>
+          <p class="hint">MP3, WAV, OGG, M4A, FLAC… tout ce que ton navigateur sait lire. Import multiple pris en charge.</p>
+        </div>
+        <div class="import-extra">
+          <details>
+            <summary>Importer depuis une URL</summary>
+            <form id="url-import-form" class="inline-form">
+              <input type="url" id="url-input" placeholder="https://exemple.com/son.mp3" required>
+              <button type="submit" class="btn">Importer</button>
+            </form>
+            <p class="hint">Fonctionne uniquement si le serveur distant autorise l'accès depuis le navigateur (CORS).</p>
+          </details>
+          <details>
+            <summary>Enregistrer avec le micro</summary>
+            <div class="mic-controls">
+              <button id="btn-mic-toggle" class="btn">● Enregistrer</button>
+              <span id="mic-timer" class="mic-timer">0:00</span>
+            </div>
+            <p class="hint">Pratique pour ajouter tes propres consignes vocales ou une ambiance captée sur le moment.</p>
+          </details>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Ma bibliothèque</h2>
+          <div class="storage-info" id="storage-info"></div>
+        </div>
+        <div class="library-toolbar">
+          <input type="search" id="library-search" placeholder="Rechercher une piste…">
+          <div id="tag-filters" class="tag-filters"></div>
+          <button id="btn-restore-defaults" class="btn small">Restaurer les sons par défaut</button>
+        </div>
+        <ul id="track-list" class="track-list"></ul>
+        <p id="library-empty" class="empty-state">Aucune piste pour l'instant — importe ton premier son ci-dessus.</p>
+      </div>
+    </section>
+
+    <!-- ============================= MIXAGE ============================= -->
+    <section id="view-mixer" class="view">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Mixeur multi-couches</h2>
+          <button id="btn-add-layer" class="btn primary small">+ Ajouter une couche</button>
+        </div>
+        <p class="hint">Superpose plusieurs pistes (ambiance, cloche, voix, musique…), chacune avec son propre volume,
+          son mode de lecture et son fondu enchaîné. « Aléatoire » pioche parmi les pistes choisies pour cette couche à
+          l'infini ; « Départ aléatoire » relance chaque tour à un point différent de la piste.</p>
+        <div id="layers-container" class="layers-container"></div>
+      </div>
+    </section>
+
+    <!-- ============================= MINUTERIES ============================= -->
+    <section id="view-timers" class="view">
+      <div class="panel">
+        <h2>Minuterie de session</h2>
+        <div class="timer-grid">
+          <label>Durée de session
+            <input type="number" id="session-minutes" min="0" step="1" value="20"> min
+          </label>
+          <label>Préparation avant le début
+            <input type="number" id="prep-seconds" min="0" step="5" value="10"> s
+          </label>
+          <label>Fondu de sortie en fin de session
+            <input type="number" id="fadeout-seconds" min="0" step="1" value="8"> s
+          </label>
+          <label class="checkbox-line">
+            <input type="checkbox" id="session-endless"> Session sans limite (pas de minuteur)
+          </label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Cloche d'intervalle</h2>
+        <div class="timer-grid">
+          <label class="checkbox-line">
+            <input type="checkbox" id="interval-enabled"> Activer une cloche périodique
+          </label>
+          <label>Toutes les
+            <input type="number" id="interval-minutes" min="1" step="1" value="5"> min
+          </label>
+          <label>Son
+            <select id="interval-track"></select>
+          </label>
+          <label>Volume
+            <input type="range" id="interval-volume" min="0" max="100" value="80">
+          </label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Session en cours</h2>
+        <div class="session-display">
+          <svg viewBox="0 0 120 120" class="progress-ring" aria-hidden="true">
+            <circle cx="60" cy="60" r="52" class="ring-bg"></circle>
+            <circle cx="60" cy="60" r="52" class="ring-fg" id="ring-fg"></circle>
+          </svg>
+          <div class="session-readout">
+            <span id="session-clock">20:00</span>
+            <span id="session-status" class="session-status">Prêt</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= RESPIRATION ============================= -->
+    <section id="view-breathing" class="view">
+      <div class="panel">
+        <h2>Guide de respiration</h2>
+        <div class="timer-grid">
+          <label>Modèle
+            <select id="breathing-pattern">
+              <option value="box">Carrée 4-4-4-4</option>
+              <option value="478">4-7-8 (relaxation)</option>
+              <option value="coherence">Cohérence 5-0-5-0</option>
+              <option value="custom">Personnalisé</option>
+            </select>
+          </label>
+          <div id="custom-breathing" class="custom-breathing" hidden>
+            <label>Inspire <input type="number" min="0" id="cb-1" value="4"> s</label>
+            <label>Retiens <input type="number" min="0" id="cb-2" value="4"> s</label>
+            <label>Expire <input type="number" min="0" id="cb-3" value="4"> s</label>
+            <label>Retiens <input type="number" min="0" id="cb-4" value="4"> s</label>
+          </div>
+        </div>
+        <button id="btn-start-breathing" class="btn primary">Afficher le guide en plein écran</button>
+      </div>
+    </section>
+
+    <!-- ============================= PRESETS ============================= -->
+    <section id="view-presets" class="view">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Presets de session</h2>
+          <div class="preset-actions">
+            <button id="btn-save-preset" class="btn primary small">Enregistrer la configuration actuelle</button>
+            <button id="btn-export-presets" class="btn small">Exporter (JSON)</button>
+            <button id="btn-import-presets" class="btn small">Importer (JSON)</button>
+            <input type="file" id="preset-import-input" accept="application/json" hidden>
+          </div>
+        </div>
+        <p class="hint">Un preset mémorise les couches, leurs modes/volumes et les réglages de minuterie. L'audio
+          lui-même reste dans ta bibliothèque locale : si tu importes un preset sur un autre appareil, réimporte
+          d'abord les pistes citées (par nom).</p>
+        <ul id="preset-list" class="preset-list"></ul>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="transport-bar">
+    <canvas id="visualizer" width="160" height="40" aria-hidden="true"></canvas>
+    <button id="btn-transport-play" class="btn primary transport-play">▶ Démarrer la session</button>
+    <button id="btn-transport-stop" class="btn transport-stop">■ Stop</button>
+    <div class="master-volume">
+      <label for="master-volume">Master</label>
+      <input type="range" id="master-volume" min="0" max="100" value="80">
+    </div>
+    <div class="transport-clock" id="transport-clock">--:--</div>
+  </footer>
+
+</div>
+
+<div id="breathing-overlay" class="breathing-overlay" hidden>
+  <button id="btn-close-breathing" class="btn-close" aria-label="Fermer">✕</button>
+  <div class="breath-circle" id="breath-circle">
+    <span id="breath-label">Inspire</span>
+  </div>
+  <p id="breath-cycle-count" class="breath-cycle-count"></p>
+</div>
+
+<div id="help-modal" class="modal" hidden>
+  <div class="modal-content">
+    <button id="btn-close-help" class="btn-close" aria-label="Fermer">✕</button>
+    <h2>Raccourcis clavier</h2>
+    <ul class="shortcut-list">
+      <li><kbd>Espace</kbd> Lecture / Pause de la session</li>
+      <li><kbd>S</kbd> Stop complet</li>
+      <li><kbd>↑</kbd> / <kbd>↓</kbd> Volume master</li>
+      <li><kbd>B</kbd> Ouvrir/fermer le guide de respiration</li>
+      <li><kbd>1</kbd>–<kbd>5</kbd> Changer d'onglet</li>
+      <li><kbd>?</kbd> Cette aide</li>
+    </ul>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
