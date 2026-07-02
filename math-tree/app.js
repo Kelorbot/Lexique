@@ -9,6 +9,15 @@ const UNSORTED_NAME = 'Non classé';
 const DEFAULT_MODEL = 'gemini-2.5-flash';
 const LS_API_KEY = 'mathtree_api_key';
 const LS_MODEL = 'mathtree_model';
+const LS_LAYOUT = 'mathtree_layout';
+
+// Une couleur distincte par grand domaine (branche de premier niveau) :
+// Algèbre, Analyse, Géométrie, etc. — propagée à tout son sous-arbre.
+const FIELD_COLORS = [
+  '#7c9eff', '#63e6be', '#ffb066', '#ff8fab', '#c792ea',
+  '#8fd3ff', '#f4d35e', '#7ee081', '#ff9e64', '#5ed1d1',
+  '#b0a3ff', '#f78fb3',
+];
 
 const MATH_DELIMS = [
   { left: '$$', right: '$$', display: true },
@@ -25,6 +34,7 @@ const state = {
   entries: [],
   selectedId: null,          // branche actuellement sélectionnée (ou null)
   collapsed: new Set(),      // ids de branches repliées
+  customPos: {},             // id -> {x, y} : bulles déplacées à la main
   apiKey: '',
   model: DEFAULT_MODEL,
   uploadQueue: [],
@@ -44,6 +54,8 @@ let branchModalMode = null;      // 'add' | 'rename'
 let branchModalParent = ROOT_ID; // parent visé pour un ajout
 let branchModalTarget = null;    // branche à renommer
 let hasFitOnce = false;
+let dragState = null;            // déplacement d'une bulle en cours
+let justDragged = false;        // pour ne pas déclencher un clic après un drag
 
 // ---------- Utilitaires ----------
 
@@ -53,6 +65,56 @@ function uuid() {
 }
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// Remonte jusqu'à la branche de premier niveau (le « domaine »).
+function topAncestorId(id) {
+  let cur = id;
+  for (let i = 0; i < 50; i++) {
+    const b = findBranch(cur);
+    if (!b) return null;
+    if (b.parentId === ROOT_ID) return b.id;
+    cur = b.parentId;
+  }
+  return null;
+}
+
+// Couleur du domaine auquel appartient un nœud (null pour la racine).
+function colorForNode(type, id, data) {
+  if (type === 'root') return null;
+  let topId;
+  if (type === 'leaf') topId = topAncestorId(data.branchId);
+  else topId = topAncestorId(id);
+  if (!topId) return null;
+  const tops = childBranches(ROOT_ID);
+  const idx = tops.findIndex(b => b.id === topId);
+  return FIELD_COLORS[(idx >= 0 ? idx : 0) % FIELD_COLORS.length];
+}
+
+function loadLayout() {
+  try {
+    const d = JSON.parse(localStorage.getItem(LS_LAYOUT) || '{}');
+    state.customPos = d.customPos || {};
+    state.collapsed = new Set(d.collapsed || []);
+  } catch (e) {
+    state.customPos = {};
+    state.collapsed = new Set();
+  }
+}
+
+function saveLayout() {
+  localStorage.setItem(LS_LAYOUT, JSON.stringify({
+    customPos: state.customPos,
+    collapsed: [...state.collapsed],
+  }));
+}
 
 function normalize(str) {
   return String(str || '')
@@ -525,7 +587,7 @@ function subtreeWeight(id, type) {
 function computeLayout() {
   weightCache.clear();
   const positions = new Map();
-  positions.set(ROOT_ID, { x: 0, y: 0, type: 'root' });
+  positions.set(ROOT_ID, { x: 0, y: 0, type: 'root', color: null });
 
   function place(parentId, a0, a1, depth) {
     if (isCollapsed(parentId)) return;
@@ -543,6 +605,7 @@ function computeLayout() {
         y: r * Math.sin(mid),
         type: k.type,
         data: k.data,
+        color: colorForNode(k.type, k.id, k.data),
       });
       if (k.type === 'branch') place(k.id, a, a + span, depth + 1);
       a += span;
@@ -550,6 +613,12 @@ function computeLayout() {
   }
 
   place(ROOT_ID, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI, 1);
+
+  // Applique les positions personnalisées (bulles déplacées à la main).
+  for (const id in state.customPos) {
+    const p = positions.get(id);
+    if (p) { p.x = state.customPos[id].x; p.y = state.customPos[id].y; }
+  }
   return positions;
 }
 
@@ -617,16 +686,24 @@ function fitView(animate = true) {
   applyView(animate);
 }
 
+function applyNodeColor(node, color) {
+  if (!color) return;
+  node.style.setProperty('--field', color);
+  node.style.setProperty('--field-soft', hexToRgba(color, 0.16));
+  node.style.setProperty('--field-strong', hexToRgba(color, 0.5));
+}
+
 function makeNode(id, pos) {
   const node = document.createElement('div');
   node.style.left = pos.x + 'px';
   node.style.top = pos.y + 'px';
+  applyNodeColor(node, pos.color);
 
   if (pos.type === 'root') {
     node.className = 'node root';
     node.innerHTML = `<div class="bubble">🌳</div><div class="label"></div>`;
     renderMathText(node.querySelector('.label'), ROOT_NAME);
-    node.addEventListener('click', () => selectRoot());
+    node.addEventListener('click', () => { if (!consumeDrag()) selectRoot(); });
   } else if (pos.type === 'branch') {
     const b = pos.data;
     const collapsed = isCollapsed(b.id);
@@ -640,35 +717,28 @@ function makeNode(id, pos) {
       </div>
       <div class="label"></div>`;
     renderMathText(node.querySelector('.label'), b.name);
-    node.addEventListener('click', () => selectBranch(b.id));
+    node.addEventListener('click', () => { if (!consumeDrag()) selectBranch(b.id); });
   } else {
     const e = pos.data;
     node.className = 'node leaf';
     node.innerHTML = `<div class="bubble"><span class="leaf-fallback">📄</span></div><div class="label"></div>`;
     renderMathText(node.querySelector('.label'), e.title);
-    node.addEventListener('click', () => openEntryModal(e.id));
+    node.addEventListener('click', () => { if (!consumeDrag()) openEntryModal(e.id); });
     getImageURL(e.id).then(url => {
       if (url) node.querySelector('.bubble').innerHTML = `<img src="${url}" alt="" />`;
     });
   }
+  attachDrag(node, id);
   return node;
 }
 
-function render() {
-  const positions = computeLayout();
-  lastPositions = positions;
-
-  const nodesContainer = $('tree-nodes');
+// Trace (ou re-trace) les traits parent -> enfant à partir des positions.
+function drawEdges(positions) {
   const svg = $('branch-svg');
-  nodesContainer.innerHTML = '';
   svg.innerHTML = '';
-
-  // Traits parent -> enfant.
   for (const [id, pos] of positions) {
     if (id === ROOT_ID) continue;
-    let parentId;
-    if (pos.type === 'leaf') parentId = pos.data.branchId;
-    else parentId = pos.data.parentId;
+    const parentId = pos.type === 'leaf' ? pos.data.branchId : pos.data.parentId;
     const parent = positions.get(parentId);
     if (!parent) continue;
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -676,22 +746,88 @@ function render() {
     const my = (parent.y + pos.y) / 2;
     path.setAttribute('d', `M ${parent.x} ${parent.y} Q ${mx} ${my} ${pos.x} ${pos.y}`);
     path.setAttribute('class', pos.type === 'leaf' ? 'to-leaf' : 'to-branch');
+    if (pos.color) {
+      path.setAttribute('stroke', hexToRgba(pos.color, pos.type === 'leaf' ? 0.32 : 0.6));
+    }
     svg.appendChild(path);
   }
+}
 
-  // Nœuds.
+function render() {
+  const positions = computeLayout();
+  lastPositions = positions;
+
+  const nodesContainer = $('tree-nodes');
+  nodesContainer.innerHTML = '';
+  drawEdges(positions);
   for (const [id, pos] of positions) {
     nodesContainer.appendChild(makeNode(id, pos));
   }
 
-  const totalNodes = positions.size;
-  $('empty-hint').classList.toggle('hidden', totalNodes > 1);
-
+  $('empty-hint').classList.toggle('hidden', positions.size > 1);
   renderBreadcrumb();
   renderBranchActions();
 
   if (!hasFitOnce) { hasFitOnce = true; fitView(false); }
   else applyView(false);
+}
+
+// ---------- Déplacement des bulles (personnalisation) ----------
+
+function consumeDrag() {
+  if (justDragged) { justDragged = false; return true; }
+  return false;
+}
+
+function attachDrag(node, id) {
+  node.addEventListener('pointerdown', e => {
+    if (e.button != null && e.button !== 0) return;
+    e.stopPropagation();               // n'entraîne pas le pan du fond
+    const pos = lastPositions.get(id);
+    if (!pos) return;
+    dragState = {
+      id, node,
+      startX: e.clientX, startY: e.clientY,
+      baseX: pos.x, baseY: pos.y,
+      moved: false, pointerId: e.pointerId,
+    };
+    try { node.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  });
+
+  node.addEventListener('pointermove', e => {
+    if (!dragState || dragState.id !== id) return;
+    const totalDx = e.clientX - dragState.startX;
+    const totalDy = e.clientY - dragState.startY;
+    if (Math.abs(totalDx) + Math.abs(totalDy) > 4) dragState.moved = true;
+    const nx = dragState.baseX + totalDx / view.scale;
+    const ny = dragState.baseY + totalDy / view.scale;
+    node.style.left = nx + 'px';
+    node.style.top = ny + 'px';
+    const p = lastPositions.get(id);
+    if (p) { p.x = nx; p.y = ny; drawEdges(lastPositions); }
+  });
+
+  function endDrag(e) {
+    if (!dragState || dragState.id !== id) return;
+    try { node.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    if (dragState.moved) {
+      const p = lastPositions.get(id);
+      if (p) { state.customPos[id] = { x: p.x, y: p.y }; saveLayout(); }
+      justDragged = true;              // avale le clic qui suit
+    }
+    dragState = null;
+  }
+  node.addEventListener('pointerup', endDrag);
+  node.addEventListener('pointercancel', endDrag);
+}
+
+// Réorganise proprement : efface les déplacements manuels et recadre.
+function autoArrange() {
+  state.customPos = {};
+  saveLayout();
+  render();
+  fitView(true);
+  showToast('Arbre réorganisé.');
 }
 
 // ---------- Fil d'Ariane ----------
@@ -756,6 +892,7 @@ function toggleCollapseSelected() {
   if (!id) return;
   if (isCollapsed(id)) state.collapsed.delete(id);
   else state.collapsed.add(id);
+  saveLayout();
   render();
   centerOnId(id);
 }
@@ -844,10 +981,13 @@ async function deleteSelectedBranch() {
   for (const bid of allBranchIds) {
     await MathTreeDB.delete('branches', bid);
     state.collapsed.delete(bid);
+    delete state.customPos[bid];
   }
+  for (const eid of entryIds) delete state.customPos[eid];
   state.entries = state.entries.filter(e => !entryIds.includes(e.id));
   state.branches = state.branches.filter(b => !allBranchIds.includes(b.id));
   state.selectedId = null;
+  saveLayout();
   render();
   showToast('Branche supprimée.');
 }
@@ -1077,6 +1217,8 @@ async function resetAll() {
   state.entries = [];
   state.selectedId = null;
   state.collapsed.clear();
+  state.customPos = {};
+  saveLayout();
   await ensureSeed();
   await loadData();
   hasFitOnce = false;
@@ -1202,6 +1344,7 @@ function bindEvents() {
     zoomAt(r.left + r.width / 2, r.top + r.height / 2, 0.8, true);
   });
   $('btn-zoom-fit').addEventListener('click', () => fitView(true));
+  $('btn-auto-arrange').addEventListener('click', autoArrange);
 
   // Barre d'actions branche
   $('ba-add').addEventListener('click', () =>
@@ -1276,6 +1419,7 @@ function bindEvents() {
 
 async function init() {
   loadSettings();
+  loadLayout();
   await ensureSeed();
   await loadData();
   bindEvents();
