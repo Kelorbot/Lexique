@@ -121,16 +121,16 @@
       <h2>Réglages</h2>
 
       <label class="field">
-        Clé API Anthropic (Claude)
-        <input id="settings-api-key" type="password" placeholder="sk-ant-…" autocomplete="off" />
+        Clé API Gemini (Google AI Studio)
+        <input id="settings-api-key" type="password" placeholder="AIzaSy…" autocomplete="off" />
       </label>
-      <p class="hint">Stockée uniquement dans le stockage local de ton navigateur. Elle n'est jamais envoyée ailleurs qu'à l'API Anthropic, directement depuis ton appareil.</p>
+      <p class="hint">Gratuite : crée-la sur <strong>aistudio.google.com/apikey</strong>. Stockée uniquement dans le stockage local de ton navigateur, elle n'est jamais envoyée ailleurs qu'à l'API Gemini, directement depuis ton appareil.</p>
 
       <label class="field">
         Modèle
-        <input id="settings-model" type="text" placeholder="claude-sonnet-4-5-20250929" />
+        <input id="settings-model" type="text" placeholder="gemini-2.5-flash" />
       </label>
-      <p class="hint">Identifiant du modèle Claude à utiliser (avec vision). Ajuste-le si Anthropic publie un nouvel identifiant.</p>
+      <p class="hint">Identifiant du modèle Gemini à utiliser (avec vision). Ajuste-le si Google publie un nouvel identifiant sur aistudio.google.com/models — reste dans le niveau gratuit (Flash) pour ne rien payer.</p>
 
       <div class="settings-actions">
         <button class="btn primary" id="btn-save-settings">Enregistrer</button>

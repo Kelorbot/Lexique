@@ -1,12 +1,12 @@
 // Arbre Mathématique — logique de l'application.
 // Tout vit côté client : IndexedDB pour les données/images, localStorage pour
-// les réglages, et un appel direct à l'API Anthropic (Claude, vision) pour
-// transcrire chaque image en LaTeX et la classer dans l'arborescence.
+// les réglages, et un appel direct à l'API Gemini (Google AI Studio, gratuite)
+// pour transcrire chaque image en LaTeX et la classer dans l'arborescence.
 
 const ROOT_ID = 'root';
 const ROOT_NAME = 'Mathématiques';
 const UNSORTED_NAME = 'Non classé';
-const DEFAULT_MODEL = 'claude-sonnet-4-5-20250929';
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 const LS_API_KEY = 'mathtree_api_key';
 const LS_MODEL = 'mathtree_model';
 
@@ -208,7 +208,7 @@ function resizeImageFile(file, maxDim = 1500, quality = 0.86) {
   });
 }
 
-// ---------- Appel Claude (OCR mathématique -> LaTeX + classement) ----------
+// ---------- Appel Gemini (OCR mathématique -> LaTeX + classement) ----------
 
 function buildPrompt(treeOutline) {
   return [
@@ -237,24 +237,23 @@ function extractJson(raw) {
 
 async function classifyImage(base64, mediaType) {
   if (!state.apiKey) throw new Error('Clé API manquante — ouvre les réglages.');
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const model = state.model || DEFAULT_MODEL;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-api-key': state.apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
+      'x-goog-api-key': state.apiKey,
     },
     body: JSON.stringify({
-      model: state.model || DEFAULT_MODEL,
-      max_tokens: 1800,
-      messages: [{
+      contents: [{
         role: 'user',
-        content: [
-          { type: 'text', text: buildPrompt(buildTreeOutline()) },
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        parts: [
+          { text: buildPrompt(buildTreeOutline()) },
+          { inline_data: { mime_type: mediaType, data: base64 } },
         ],
       }],
+      generationConfig: { responseMimeType: 'application/json' },
     }),
   });
   if (!res.ok) {
@@ -263,7 +262,11 @@ async function classifyImage(base64, mediaType) {
     throw new Error(`Erreur API (${res.status}) : ${msg}`);
   }
   const data = await res.json();
-  const raw = data.content?.[0]?.text || '';
+  if (!data.candidates || !data.candidates.length) {
+    const reason = data.promptFeedback?.blockReason || 'raison inconnue';
+    throw new Error(`Réponse vide ou bloquée (${reason}).`);
+  }
+  const raw = data.candidates[0].content?.parts?.[0]?.text || '';
   const parsed = extractJson(raw);
   return {
     title: String(parsed.title || 'Sans titre'),
@@ -839,7 +842,7 @@ async function init() {
   bindEvents();
   render();
   if (!state.apiKey) {
-    showToast('Ajoute ta clé API Anthropic dans les réglages pour commencer.', 4000);
+    showToast('Ajoute ta clé API Gemini (gratuite) dans les réglages pour commencer.', 4000);
   }
 }
 
