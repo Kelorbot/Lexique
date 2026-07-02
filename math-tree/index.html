@@ -148,6 +148,21 @@
           </div>
         </div>
       </div>
+
+      <!-- Fil de discussion avec l'IA, propre à cette image -->
+      <div class="entry-chat">
+        <div class="chat-head">
+          <span>💬 Fil de discussion — demande une correction ou des indications</span>
+          <button class="icon-btn small" id="btn-clear-chat" title="Effacer le fil">
+            <svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"/></svg>
+          </button>
+        </div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-row">
+          <textarea id="chat-input" rows="1" placeholder="Ex. « Corrige ma démonstration » ou « Donne-moi une indication pour la question 2 »…"></textarea>
+          <button class="btn primary" id="chat-send">Envoyer</button>
+        </div>
+      </div>
     </div>
   </div>
 

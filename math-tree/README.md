@@ -72,6 +72,12 @@ elle est pensée pour un usage strictement personnel, sur une URL que tu es seul
   (dans un panneau légèrement transparent), bouton pour copier le LaTeX brut,
   et un mode édition pour corriger le titre, le LaTeX ou la branche si le
   classement automatique s'est trompé.
+- **Fil de discussion par image** : chaque image a sa propre conversation avec
+  l'IA (Gemini). Pose une question sur ce document précis — « corrige ma
+  démonstration », « donne-moi une indication pour la question 2 », « explique
+  cette étape » — et l'IA répond en français avec les formules en LaTeX, en
+  gardant l'image et sa transcription comme contexte. L'historique est
+  enregistré avec l'image (et inclus dans l'export JSON).
 - **Recherche** : la barre en haut filtre instantanément titres, contenu LaTeX
   et noms de branches (insensible aux accents/majuscules).
 
