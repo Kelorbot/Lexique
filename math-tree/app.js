@@ -17,19 +17,33 @@ const MATH_DELIMS = [
   { left: '$', right: '$', display: false },
 ];
 
+// Disciplines qui ne sont PAS des mathématiques et doivent être bloquées.
+const NON_MATH_HINT = 'physique, chimie, biologie, langues (anglais…), philosophie, histoire, littérature, sciences économiques et sociales';
+
 const state = {
   branches: [],
   entries: [],
-  focusId: ROOT_ID,
+  selectedId: null,          // branche actuellement sélectionnée (ou null)
+  collapsed: new Set(),      // ids de branches repliées
   apiKey: '',
   model: DEFAULT_MODEL,
   uploadQueue: [],
   processing: false,
 };
 
+const view = { x: 0, y: 0, scale: 1 };
+const MIN_SCALE = 0.12;
+const MAX_SCALE = 3;
+const RING_GAP = 168;
+
 const imageUrlCache = new Map();
+let lastPositions = new Map();   // id -> {x, y, type}
 let currentEntryId = null;
 let toastTimer = null;
+let branchModalMode = null;      // 'add' | 'rename'
+let branchModalParent = ROOT_ID; // parent visé pour un ajout
+let branchModalTarget = null;    // branche à renommer
+let hasFitOnce = false;
 
 // ---------- Utilitaires ----------
 
@@ -38,6 +52,8 @@ function uuid() {
   return 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
 }
 
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
 function normalize(str) {
   return String(str || '')
     .normalize('NFD')
@@ -45,6 +61,12 @@ function normalize(str) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[<>&"]/g, c => (
+    { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]
+  ));
 }
 
 function renderMathText(el, text) {
@@ -57,7 +79,7 @@ function renderMathText(el, text) {
 }
 
 function showToast(msg, ms = 2200) {
-  const el = document.getElementById('toast');
+  const el = $('toast');
   el.textContent = msg;
   el.classList.remove('hidden');
   clearTimeout(toastTimer);
@@ -88,10 +110,12 @@ function findBranch(id) {
   return state.branches.find(b => b.id === id) || null;
 }
 
+function isCollapsed(id) { return state.collapsed.has(id); }
+
 function pathTo(nodeId) {
   const path = [];
   let current = nodeId;
-  while (current !== ROOT_ID) {
+  while (current && current !== ROOT_ID) {
     const b = findBranch(current);
     if (!b) break;
     path.unshift(b);
@@ -128,6 +152,17 @@ function buildTreeOutline() {
   }
   walk(ROOT_ID, 0);
   return lines.length ? lines.join('\n') : '(vide pour le moment)';
+}
+
+// Rassemble une branche et tout son sous-arbre (branches + entrées).
+function collectSubtree(branchId) {
+  const branchIds = [];
+  const entryIds = [];
+  (function walk(id) {
+    for (const b of childBranches(id)) { branchIds.push(b.id); walk(b.id); }
+    for (const e of childEntries(id)) entryIds.push(e.id);
+  })(branchId);
+  return { branchIds, entryIds };
 }
 
 async function ensureSeed() {
@@ -195,8 +230,7 @@ function resizeImageFile(file, maxDim = 1500, quality = 0.86) {
           if (!blob) { reject(new Error("Échec de la compression.")); return; }
           const fr2 = new FileReader();
           fr2.onload = () => {
-            const dataUrl = fr2.result;
-            const base64 = dataUrl.split(',')[1];
+            const base64 = fr2.result.split(',')[1];
             resolve({ blob, base64, mediaType: 'image/jpeg' });
           };
           fr2.readAsDataURL(blob);
@@ -212,19 +246,39 @@ function resizeImageFile(file, maxDim = 1500, quality = 0.86) {
 
 function buildPrompt(treeOutline) {
   return [
-    "Tu es un assistant d'OCR mathématique.",
-    "Analyse cette image (cours, exercice ou notes manuscrites de mathématiques) et effectue trois tâches :",
-    "1. Transcris fidèlement tout le contenu mathématique en LaTeX, y compris le texte d'énoncé éventuel. Utilise \\[ ... \\] pour les blocs et des environnements (align, aligned, cases, array) si utile.",
-    "2. Rédige un titre court (5 à 10 mots) en français qui résume précisément le contenu, avec la notation clé en LaTeX si pertinent, par exemple : \"Convergence de la série $\\sum 1/n^2$\".",
-    "3. Classe ce contenu dans l'arborescence de branches mathématiques ci-dessous. Réutilise EXACTEMENT l'orthographe d'une branche existante quand le sujet correspond conceptuellement. Sinon, crée les niveaux nécessaires avec des noms de branches courts et standards en français. Le chemin peut avoir 1 à 3 niveaux, du plus général au plus précis.",
+    "Tu es un expert de la transcription (OCR) de documents de MATHÉMATIQUES : cours, exercices, corrigés, notes manuscrites.",
+    "",
+    "ÉTAPE 1 — Filtrage. Détermine si l'image relève réellement des mathématiques.",
+    `Si la matière dominante est une AUTRE discipline (${NON_MATH_HINT}), alors renvoie \"isMath\": false, indique la matière dans \"subject\", et laisse \"title\", \"latex\" et \"path\" vides. Ne transcris rien dans ce cas.`,
+    "Une image peut contenir un peu de calcul tout en n'étant pas des maths (ex. un exercice de physique avec des formules) : dans le doute, regarde le SUJET traité, pas la simple présence de symboles.",
+    "",
+    "ÉTAPE 2 — Si et seulement si c'est bien des mathématiques (\"isMath\": true), effectue :",
+    "1. Transcription FIDÈLE et COMPLÈTE du contenu en LaTeX. Corrige les erreurs évidentes d'OCR mais n'invente jamais de contenu absent.",
+    "   - Rédige tout le texte en langage naturel en FRANÇAIS correct (accents, orthographe et grammaire soignés), même si l'écriture source est brouillonne ou abrégée.",
+    "   - Mets CHAQUE expression mathématique en LaTeX : $ ... $ en ligne, \\[ ... \\] pour les formules mises en évidence.",
+    "   - Assure-toi que le LaTeX est VALIDE et compilable : accolades équilibrées, commandes correctes (\\frac, \\sum, \\int, \\sqrt, \\lim, \\mathbb, etc.), environnements adaptés (aligned, cases, pmatrix, array) si utile.",
+    "2. Un titre court en français (max ~10 mots) résumant précisément le contenu, avec la notation clé en LaTeX si pertinent, ex. : \"Convergence de la série $\\sum 1/n^2$\".",
+    "3. Un classement \"path\" dans l'arborescence mathématique ci-dessous. Réutilise EXACTEMENT le nom d'une branche existante quand le sujet lui correspond. Sinon crée 1 à 3 niveaux, du plus général au plus précis, avec des noms de branches courts et standards en français.",
     "",
     "Arborescence actuelle :",
     treeOutline,
     "",
-    "Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour ni bloc de code, sous la forme :",
-    '{"title": "...", "latex": "...", "path": ["Niveau 1", "Niveau 2"]}',
+    "Réponds UNIQUEMENT par un objet JSON strict, sans texte ni bloc de code autour, de la forme :",
+    '{"isMath": true, "subject": "", "title": "...", "latex": "...", "path": ["Niveau 1", "Niveau 2"]}',
   ].join('\n');
 }
+
+const RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    isMath: { type: 'boolean' },
+    subject: { type: 'string' },
+    title: { type: 'string' },
+    latex: { type: 'string' },
+    path: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['isMath', 'title', 'latex', 'path'],
+};
 
 function extractJson(raw) {
   let text = String(raw || '').trim();
@@ -253,7 +307,11 @@ async function classifyImage(base64, mediaType) {
           { inline_data: { mime_type: mediaType, data: base64 } },
         ],
       }],
-      generationConfig: { responseMimeType: 'application/json' },
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: RESPONSE_SCHEMA,
+        temperature: 0.15,
+      },
     }),
   });
   if (!res.ok) {
@@ -269,6 +327,8 @@ async function classifyImage(base64, mediaType) {
   const raw = data.candidates[0].content?.parts?.[0]?.text || '';
   const parsed = extractJson(raw);
   return {
+    isMath: parsed.isMath !== false,
+    subject: String(parsed.subject || '').trim(),
     title: String(parsed.title || 'Sans titre'),
     latex: String(parsed.latex || ''),
     path: Array.isArray(parsed.path) ? parsed.path : [],
@@ -282,7 +342,7 @@ function setTrayVisible(visible) {
 }
 
 function renderTrayItem(item) {
-  let el = document.getElementById('upload-' + item.id);
+  let el = $('upload-' + item.id);
   if (!el) {
     el = document.createElement('div');
     el.className = 'upload-item';
@@ -290,14 +350,20 @@ function renderTrayItem(item) {
     el.innerHTML = `
       <img src="${item.previewUrl}" alt="" />
       <div class="upload-info">
-        <div class="upload-name">${item.name.replace(/[<>&]/g, '')}</div>
+        <div class="upload-name">${escapeHtml(item.name)}</div>
         <div class="upload-status"></div>
       </div>
+      <button class="cancel-btn" title="Retirer">✕</button>
     `;
+    el.querySelector('.cancel-btn').addEventListener('click', () => removeUploadItem(item.id));
     $('upload-list').prepend(el);
   }
   const statusEl = el.querySelector('.upload-status');
   statusEl.className = 'upload-status';
+  statusEl.style.display = '';
+  const oldRetry = el.querySelector('.retry-btn');
+  if (oldRetry) oldRetry.remove();
+
   if (item.status === 'queued') {
     statusEl.textContent = 'En attente…';
   } else if (item.status === 'analyzing') {
@@ -308,17 +374,25 @@ function renderTrayItem(item) {
   } else if (item.status === 'done') {
     statusEl.classList.add('done');
     statusEl.textContent = '✓ Ajouté';
+  } else if (item.status === 'rejected') {
+    statusEl.classList.add('rejected');
+    statusEl.textContent = item.error || 'Ignoré : hors mathématiques';
   } else if (item.status === 'error') {
     statusEl.classList.add('error');
     statusEl.textContent = item.error || 'Échec';
-    if (!el.querySelector('.retry-btn')) {
-      const retry = document.createElement('button');
-      retry.className = 'retry-btn';
-      retry.textContent = 'Réessayer';
-      retry.onclick = () => retryUpload(item.id);
-      el.appendChild(retry);
-    }
+    const retry = document.createElement('button');
+    retry.className = 'retry-btn';
+    retry.textContent = 'Réessayer';
+    retry.onclick = () => retryUpload(item.id);
+    el.querySelector('.upload-info').appendChild(retry);
   }
+}
+
+function updateTrayTitle() {
+  const active = state.uploadQueue.filter(i => i.status === 'queued' || i.status === 'analyzing').length;
+  $('upload-tray-title').textContent = active > 0
+    ? `Analyse — ${active} en cours`
+    : "File d'analyse";
 }
 
 function enqueueUpload(file) {
@@ -330,11 +404,40 @@ function enqueueUpload(file) {
     previewUrl: URL.createObjectURL(file),
     status: 'queued',
     error: null,
+    cancelled: false,
   };
   state.uploadQueue.push(item);
   setTrayVisible(true);
   renderTrayItem(item);
+  updateTrayTitle();
   processQueue();
+}
+
+// Retire une image de la file (l'empêche de partir à l'API si en attente,
+// ou ignore son résultat si l'analyse est déjà lancée).
+function removeUploadItem(itemId) {
+  const item = state.uploadQueue.find(i => i.id === itemId);
+  if (!item) return;
+  item.cancelled = true;
+  if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+  state.uploadQueue = state.uploadQueue.filter(i => i.id !== itemId);
+  $('upload-' + itemId)?.remove();
+  updateTrayTitle();
+  if (state.uploadQueue.length === 0) setTrayVisible(false);
+}
+
+function clearFinishedUploads() {
+  state.uploadQueue
+    .filter(i => i.status === 'done' || i.status === 'error' || i.status === 'rejected')
+    .forEach(i => {
+      if (i.previewUrl) URL.revokeObjectURL(i.previewUrl);
+      $('upload-' + i.id)?.remove();
+    });
+  state.uploadQueue = state.uploadQueue.filter(
+    i => i.status === 'queued' || i.status === 'analyzing'
+  );
+  updateTrayTitle();
+  if (state.uploadQueue.length === 0) setTrayVisible(false);
 }
 
 function retryUpload(itemId) {
@@ -342,10 +445,9 @@ function retryUpload(itemId) {
   if (!item) return;
   item.status = 'queued';
   item.error = null;
-  const el = document.getElementById('upload-' + itemId);
-  const retryBtn = el?.querySelector('.retry-btn');
-  if (retryBtn) retryBtn.remove();
+  item.cancelled = false;
   renderTrayItem(item);
+  updateTrayTitle();
   processQueue();
 }
 
@@ -354,12 +456,25 @@ async function processQueue() {
   state.processing = true;
   try {
     let next;
-    while ((next = state.uploadQueue.find(i => i.status === 'queued'))) {
+    while ((next = state.uploadQueue.find(i => i.status === 'queued' && !i.cancelled))) {
       next.status = 'analyzing';
       renderTrayItem(next);
+      updateTrayTitle();
       try {
         const resized = await resizeImageFile(next.file);
+        if (next.cancelled) continue;
         const result = await classifyImage(resized.base64, resized.mediaType);
+        if (next.cancelled) continue;
+
+        if (!result.isMath) {
+          const subj = result.subject ? ` (${result.subject})` : '';
+          next.status = 'rejected';
+          next.error = `Ignoré : hors mathématiques${subj}`;
+          renderTrayItem(next);
+          updateTrayTitle();
+          continue;
+        }
+
         const branchId = await resolvePath(result.path);
         const entryId = uuid();
         await MathTreeDB.put('images', { id: entryId, blob: resized.blob });
@@ -368,11 +483,14 @@ async function processQueue() {
         state.entries.push(entry);
         next.status = 'done';
         renderTrayItem(next);
+        updateTrayTitle();
         render();
       } catch (err) {
+        if (next.cancelled) continue;
         next.status = 'error';
-        next.error = err.message || 'Échec de l\'analyse';
+        next.error = err.message || "Échec de l'analyse";
         renderTrayItem(next);
+        updateTrayTitle();
       }
     }
   } finally {
@@ -380,12 +498,209 @@ async function processQueue() {
   }
 }
 
-// ---------- Rendu : fil d'Ariane ----------
+// ---------- Disposition radiale de l'arbre ----------
+
+function childrenOf(id) {
+  return [
+    ...childBranches(id).map(b => ({ type: 'branch', id: b.id, data: b })),
+    ...childEntries(id).map(e => ({ type: 'leaf', id: e.id, data: e })),
+  ];
+}
+
+const weightCache = new Map();
+function subtreeWeight(id, type) {
+  if (type === 'leaf') return 1;
+  if (isCollapsed(id)) return 1;
+  if (weightCache.has(id)) return weightCache.get(id);
+  const kids = childrenOf(id);
+  if (kids.length === 0) { weightCache.set(id, 1); return 1; }
+  let w = 0;
+  for (const k of kids) w += subtreeWeight(k.id, k.type);
+  w = Math.max(1, w);
+  weightCache.set(id, w);
+  return w;
+}
+
+// Calcule la position (x, y) de chaque nœud autour de la racine (0, 0).
+function computeLayout() {
+  weightCache.clear();
+  const positions = new Map();
+  positions.set(ROOT_ID, { x: 0, y: 0, type: 'root' });
+
+  function place(parentId, a0, a1, depth) {
+    if (isCollapsed(parentId)) return;
+    const kids = childrenOf(parentId);
+    if (kids.length === 0) return;
+    const total = kids.reduce((s, k) => s + subtreeWeight(k.id, k.type), 0) || 1;
+    let a = a0;
+    for (const k of kids) {
+      const w = subtreeWeight(k.id, k.type);
+      const span = (a1 - a0) * (w / total);
+      const mid = a + span / 2;
+      const r = depth * RING_GAP;
+      positions.set(k.id, {
+        x: r * Math.cos(mid),
+        y: r * Math.sin(mid),
+        type: k.type,
+        data: k.data,
+      });
+      if (k.type === 'branch') place(k.id, a, a + span, depth + 1);
+      a += span;
+    }
+  }
+
+  place(ROOT_ID, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI, 1);
+  return positions;
+}
+
+// ---------- Rendu de l'arbre ----------
+
+function applyView(animate = false) {
+  const stage = $('tree-stage');
+  const rect = stage.getBoundingClientRect();
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  const world = $('tree-world');
+  world.style.transition = animate
+    ? 'transform .4s cubic-bezier(.22,1,.36,1)'
+    : 'none';
+  world.style.transform =
+    `translate(${cx + view.x}px, ${cy + view.y}px) scale(${view.scale})`;
+}
+
+function zoomAt(clientX, clientY, factor, animate = false) {
+  const rect = $('tree-stage').getBoundingClientRect();
+  const sx = clientX - rect.left;
+  const sy = clientY - rect.top;
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  const ns = clamp(view.scale * factor, MIN_SCALE, MAX_SCALE);
+  const f = ns / view.scale;
+  view.x = (1 - f) * (sx - cx) + f * view.x;
+  view.y = (1 - f) * (sy - cy) + f * view.y;
+  view.scale = ns;
+  applyView(animate);
+}
+
+function centerOnPoint(px, py, animate = true) {
+  view.x = -view.scale * px;
+  view.y = -view.scale * py;
+  applyView(animate);
+}
+
+function centerOnId(id) {
+  const p = lastPositions.get(id);
+  if (p) centerOnPoint(p.x, p.y, true);
+}
+
+function fitView(animate = true) {
+  const rect = $('tree-stage').getBoundingClientRect();
+  let minX = 0, minY = 0, maxX = 0, maxY = 0;
+  for (const p of lastPositions.values()) {
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  }
+  const margin = 110;               // rayon des bulles + labels
+  minX -= margin; minY -= margin; maxX += margin; maxY += margin;
+  const w = Math.max(maxX - minX, 1);
+  const h = Math.max(maxY - minY, 1);
+  const pad = 70;
+  const scale = clamp(
+    Math.min((rect.width - pad) / w, (rect.height - pad) / h),
+    MIN_SCALE, 1.15
+  );
+  view.scale = scale;
+  const cxWorld = (minX + maxX) / 2;
+  const cyWorld = (minY + maxY) / 2;
+  view.x = -scale * cxWorld;
+  view.y = -scale * cyWorld;
+  applyView(animate);
+}
+
+function makeNode(id, pos) {
+  const node = document.createElement('div');
+  node.style.left = pos.x + 'px';
+  node.style.top = pos.y + 'px';
+
+  if (pos.type === 'root') {
+    node.className = 'node root';
+    node.innerHTML = `<div class="bubble">🌳</div><div class="label"></div>`;
+    renderMathText(node.querySelector('.label'), ROOT_NAME);
+    node.addEventListener('click', () => selectRoot());
+  } else if (pos.type === 'branch') {
+    const b = pos.data;
+    const collapsed = isCollapsed(b.id);
+    node.className = 'node branch' + (collapsed ? ' collapsed' : '') +
+      (state.selectedId === b.id ? ' selected' : '');
+    const count = countDescendantEntries(b.id);
+    node.innerHTML = `
+      <div class="bubble">
+        <svg viewBox="0 0 24 24"><path d="M17 5a3 3 0 0 0-2.83 2H12a1 1 0 0 0-1 1v3H8.83A3 3 0 1 0 8 13.83V17a3 3 0 1 0 2 0v-5h2v2.17A3 3 0 1 0 14 14a3 3 0 0 0-1-2.24V9h2.17A3 3 0 1 0 17 5z"/></svg>
+        ${count > 0 ? `<span class="count-badge">${count}</span>` : ''}
+      </div>
+      <div class="label"></div>`;
+    renderMathText(node.querySelector('.label'), b.name);
+    node.addEventListener('click', () => selectBranch(b.id));
+  } else {
+    const e = pos.data;
+    node.className = 'node leaf';
+    node.innerHTML = `<div class="bubble"><span class="leaf-fallback">📄</span></div><div class="label"></div>`;
+    renderMathText(node.querySelector('.label'), e.title);
+    node.addEventListener('click', () => openEntryModal(e.id));
+    getImageURL(e.id).then(url => {
+      if (url) node.querySelector('.bubble').innerHTML = `<img src="${url}" alt="" />`;
+    });
+  }
+  return node;
+}
+
+function render() {
+  const positions = computeLayout();
+  lastPositions = positions;
+
+  const nodesContainer = $('tree-nodes');
+  const svg = $('branch-svg');
+  nodesContainer.innerHTML = '';
+  svg.innerHTML = '';
+
+  // Traits parent -> enfant.
+  for (const [id, pos] of positions) {
+    if (id === ROOT_ID) continue;
+    let parentId;
+    if (pos.type === 'leaf') parentId = pos.data.branchId;
+    else parentId = pos.data.parentId;
+    const parent = positions.get(parentId);
+    if (!parent) continue;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const mx = (parent.x + pos.x) / 2;
+    const my = (parent.y + pos.y) / 2;
+    path.setAttribute('d', `M ${parent.x} ${parent.y} Q ${mx} ${my} ${pos.x} ${pos.y}`);
+    path.setAttribute('class', pos.type === 'leaf' ? 'to-leaf' : 'to-branch');
+    svg.appendChild(path);
+  }
+
+  // Nœuds.
+  for (const [id, pos] of positions) {
+    nodesContainer.appendChild(makeNode(id, pos));
+  }
+
+  const totalNodes = positions.size;
+  $('empty-hint').classList.toggle('hidden', totalNodes > 1);
+
+  renderBreadcrumb();
+  renderBranchActions();
+
+  if (!hasFitOnce) { hasFitOnce = true; fitView(false); }
+  else applyView(false);
+}
+
+// ---------- Fil d'Ariane ----------
 
 function renderBreadcrumb() {
-  const path = pathTo(state.focusId);
   const container = $('breadcrumb');
   container.innerHTML = '';
+  const targetId = state.selectedId || ROOT_ID;
+  const path = pathTo(targetId);
   path.forEach((node, i) => {
     if (i > 0) {
       const sep = document.createElement('span');
@@ -396,129 +711,145 @@ function renderBreadcrumb() {
     const btn = document.createElement('button');
     btn.className = 'crumb' + (i === path.length - 1 ? ' current' : '');
     renderMathText(btn, node.name);
-    if (i !== path.length - 1) {
-      btn.addEventListener('click', () => setFocus(node.id));
-    }
+    btn.addEventListener('click', () => {
+      if (node.id === ROOT_ID) selectRoot();
+      else selectBranch(node.id);
+    });
     container.appendChild(btn);
   });
 }
 
-// ---------- Rendu : scène de l'arbre ----------
+// ---------- Sélection & barre d'actions ----------
 
-function renderTreeStage() {
-  const stage = $('tree-stage');
-  const nodesContainer = $('tree-nodes');
-  const svg = $('branch-svg');
-  nodesContainer.innerHTML = '';
-  svg.innerHTML = '';
-
-  const isRoot = state.focusId === ROOT_ID;
-  const focusName = isRoot ? ROOT_NAME : (findBranch(state.focusId)?.name || ROOT_NAME);
-  const branches = childBranches(state.focusId);
-  const entries = childEntries(state.focusId);
-  const total = branches.length + entries.length;
-
-  $('empty-hint').classList.toggle('hidden', total !== 0);
-
-  // Tronc (nœud courant), toujours ancré en bas au centre.
-  let trunk = document.querySelector('.trunk-node');
-  if (!trunk) {
-    trunk = document.createElement('div');
-    trunk.className = 'trunk-node';
-    trunk.innerHTML = `
-      <div class="trunk-bubble">${isRoot ? '🌳' : '🌿'}</div>
-      <div class="trunk-label"></div>
-      <div class="trunk-count"></div>
-    `;
-    nodesContainer.appendChild(trunk);
-  } else {
-    trunk.querySelector('.trunk-bubble').textContent = isRoot ? '🌳' : '🌿';
-  }
-  renderMathText(trunk.querySelector('.trunk-label'), focusName);
-  const descendantCount = isRoot
-    ? state.entries.length
-    : countDescendantEntries(state.focusId);
-  trunk.querySelector('.trunk-count').textContent =
-    descendantCount === 0 ? 'Aucune feuille' : descendantCount + (descendantCount > 1 ? ' feuilles' : ' feuille');
-
-  if (total === 0) return;
-
-  const rect = stage.getBoundingClientRect();
-  const width = rect.width;
-  const height = rect.height;
-  const anchor = { x: width / 2, y: height - 88 };
-  const radius = Math.max(140, Math.min(width * 0.4, height - 190, 320));
-  const spreadDeg = Math.min(156, 30 + total * 16);
-  const startDeg = total === 1 ? 0 : -spreadDeg / 2;
-  const stepDeg = total === 1 ? 0 : spreadDeg / (total - 1);
-
-  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-
-  const items = [
-    ...branches.map(b => ({ type: 'branch', data: b })),
-    ...entries.map(e => ({ type: 'leaf', data: e })),
-  ];
-
-  items.forEach((item, i) => {
-    const angleDeg = startDeg + stepDeg * i;
-    const angleRad = (angleDeg * Math.PI) / 180;
-    const x = anchor.x + radius * Math.sin(angleRad);
-    const y = anchor.y - radius * Math.cos(angleRad);
-
-    const bend = (i % 2 === 0 ? 1 : -1) * radius * 0.12;
-    const midX = (anchor.x + x) / 2 + bend * Math.cos(angleRad);
-    const midY = (anchor.y + y) / 2 + bend * Math.sin(angleRad);
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M ${anchor.x} ${anchor.y} Q ${midX} ${midY} ${x} ${y}`);
-    path.setAttribute('class', item.type === 'branch' ? 'to-branch' : 'to-leaf');
-    svg.appendChild(path);
-
-    const node = document.createElement('div');
-    node.className = 'node ' + item.type;
-    node.style.left = x + 'px';
-    node.style.top = y + 'px';
-    node.style.animationDelay = (i * 0.03) + 's';
-
-    if (item.type === 'branch') {
-      const b = item.data;
-      const count = countDescendantEntries(b.id);
-      node.innerHTML = `
-        <div class="bubble">
-          <svg viewBox="0 0 24 24"><path d="M17 5a3 3 0 0 0-2.83 2H12a1 1 0 0 0-1 1v3H8.83A3 3 0 1 0 8 13.83V17a3 3 0 1 0 2 0v-5h2v2.17A3 3 0 1 0 14 14a3 3 0 0 0-1-2.24V9h2.17A3 3 0 1 0 17 5z"/></svg>
-          <span class="count-badge">${count}</span>
-        </div>
-        <div class="label"></div>
-      `;
-      renderMathText(node.querySelector('.label'), b.name);
-      node.addEventListener('click', () => setFocus(b.id));
-    } else {
-      const e = item.data;
-      node.innerHTML = `
-        <div class="bubble"><span class="leaf-fallback">📄</span></div>
-        <div class="label"></div>
-      `;
-      renderMathText(node.querySelector('.label'), e.title);
-      node.addEventListener('click', () => openEntryModal(e.id));
-      getImageURL(e.id).then(url => {
-        if (!url) return;
-        const bubble = node.querySelector('.bubble');
-        bubble.innerHTML = `<img src="${url}" alt="" />`;
-      });
-    }
-    nodesContainer.appendChild(node);
-  });
-}
-
-function render() {
-  renderBreadcrumb();
-  renderTreeStage();
-}
-
-function setFocus(id) {
-  state.focusId = id;
+function selectRoot() {
+  state.selectedId = null;
   hideSearchResults();
   render();
+  centerOnPoint(0, 0, true);
+}
+
+function selectBranch(id) {
+  state.selectedId = id;
+  hideSearchResults();
+  render();
+  centerOnId(id);
+}
+
+function renderBranchActions() {
+  const bar = $('branch-actions');
+  const id = state.selectedId;
+  if (!id) {
+    bar.classList.add('hidden');
+    return;
+  }
+  const branch = findBranch(id);
+  if (!branch) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  renderMathText($('ba-name'), branch.name);
+  $('ba-collapse').textContent = isCollapsed(id) ? 'Déployer' : 'Réduire';
+  const hasChildren = childrenOf(id).length > 0;
+  $('ba-collapse').style.display = hasChildren ? '' : 'none';
+}
+
+function toggleCollapseSelected() {
+  const id = state.selectedId;
+  if (!id) return;
+  if (isCollapsed(id)) state.collapsed.delete(id);
+  else state.collapsed.add(id);
+  render();
+  centerOnId(id);
+}
+
+// ---------- Ajout / renommage de branche ----------
+
+function openBranchModal(mode, opts = {}) {
+  branchModalMode = mode;
+  const input = $('branch-name-input');
+  if (mode === 'add') {
+    branchModalParent = opts.parentId || ROOT_ID;
+    branchModalTarget = null;
+    $('branch-modal-title').textContent = 'Nouvelle branche';
+    input.value = '';
+    const parentName = branchModalParent === ROOT_ID
+      ? ROOT_NAME
+      : (findBranch(branchModalParent)?.name || ROOT_NAME);
+    $('branch-modal-parent').textContent = `Sera créée sous : ${parentName}`;
+  } else {
+    branchModalTarget = opts.branchId;
+    const b = findBranch(branchModalTarget);
+    $('branch-modal-title').textContent = 'Renommer la branche';
+    input.value = b ? b.name : '';
+    $('branch-modal-parent').textContent = '';
+  }
+  $('modal-branch').classList.remove('hidden');
+  setTimeout(() => input.focus(), 30);
+}
+
+async function saveBranchModal() {
+  const name = $('branch-name-input').value.trim();
+  if (!name) { showToast('Donne un nom à la branche.'); return; }
+
+  if (branchModalMode === 'add') {
+    const norm = normalize(name);
+    const dupe = state.branches.find(b => b.parentId === branchModalParent && normalize(b.name) === norm);
+    if (dupe) {
+      showToast('Cette branche existe déjà.');
+      closeModals();
+      selectBranch(dupe.id);
+      return;
+    }
+    const branch = { id: uuid(), name, parentId: branchModalParent };
+    await MathTreeDB.put('branches', branch);
+    state.branches.push(branch);
+    if (branchModalParent !== ROOT_ID) state.collapsed.delete(branchModalParent);
+    closeModals();
+    selectBranch(branch.id);
+    showToast('Branche ajoutée.');
+  } else {
+    const b = findBranch(branchModalTarget);
+    if (b) {
+      b.name = name;
+      await MathTreeDB.put('branches', b);
+    }
+    closeModals();
+    render();
+    showToast('Branche renommée.');
+  }
+}
+
+async function deleteSelectedBranch() {
+  const id = state.selectedId;
+  if (!id) return;
+  const branch = findBranch(id);
+  if (!branch) return;
+  const { branchIds, entryIds } = collectSubtree(id);
+  const nSub = branchIds.length;
+  const nImg = entryIds.length;
+  let msg = `Supprimer la branche « ${branch.name} »`;
+  if (nSub || nImg) {
+    const parts = [];
+    if (nSub) parts.push(`${nSub} sous-branche${nSub > 1 ? 's' : ''}`);
+    if (nImg) parts.push(`${nImg} image${nImg > 1 ? 's' : ''}`);
+    msg += ` et tout ce qu'elle contient (${parts.join(', ')})`;
+  }
+  msg += ' ? Cette action est irréversible.';
+  if (!confirm(msg)) return;
+
+  const allBranchIds = [id, ...branchIds];
+  for (const eid of entryIds) {
+    await MathTreeDB.delete('entries', eid);
+    await MathTreeDB.delete('images', eid);
+    releaseImageURL(eid);
+  }
+  for (const bid of allBranchIds) {
+    await MathTreeDB.delete('branches', bid);
+    state.collapsed.delete(bid);
+  }
+  state.entries = state.entries.filter(e => !entryIds.includes(e.id));
+  state.branches = state.branches.filter(b => !allBranchIds.includes(b.id));
+  state.selectedId = null;
+  render();
+  showToast('Branche supprimée.');
 }
 
 // ---------- Recherche ----------
@@ -551,12 +882,12 @@ function runSearch(query) {
     item.className = 'result-item';
     const path = pathTo(b.parentId).slice(1).map(n => n.name).concat(b.name).join(' › ') || b.name;
     item.innerHTML = `<div class="bubble" style="width:40px;height:40px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">🌿</div>
-      <div><div class="result-title"></div><div class="result-path">${path}</div></div>`;
+      <div><div class="result-title"></div><div class="result-path">${escapeHtml(path)}</div></div>`;
     renderMathText(item.querySelector('.result-title'), b.name);
     item.addEventListener('click', () => {
-      setFocus(b.id);
       $('search-input').value = '';
       hideSearchResults();
+      selectBranch(b.id);
     });
     resultsEl.appendChild(item);
   });
@@ -565,14 +896,13 @@ function runSearch(query) {
     const item = document.createElement('div');
     item.className = 'result-item';
     const path = pathTo(e.branchId).slice(1).map(n => n.name).join(' › ') || 'Racine';
-    item.innerHTML = `<img alt="" /><div><div class="result-title"></div><div class="result-path">${path}</div></div>`;
+    item.innerHTML = `<img alt="" /><div><div class="result-title"></div><div class="result-path">${escapeHtml(path)}</div></div>`;
     renderMathText(item.querySelector('.result-title'), e.title);
     getImageURL(e.id).then(url => { if (url) item.querySelector('img').src = url; });
     item.addEventListener('click', () => {
-      setFocus(e.branchId);
       $('search-input').value = '';
       hideSearchResults();
-      setTimeout(() => openEntryModal(e.id), 250);
+      openEntryModal(e.id);
     });
     resultsEl.appendChild(item);
   });
@@ -718,7 +1048,6 @@ async function importData(file) {
     return;
   }
 
-  const idMap = new Map();
   for (const b of payload.branches) {
     if (state.branches.some(existing => existing.id === b.id)) continue;
     await MathTreeDB.put('branches', b);
@@ -746,19 +1075,95 @@ async function resetAll() {
   imageUrlCache.clear();
   state.branches = [];
   state.entries = [];
-  state.focusId = ROOT_ID;
+  state.selectedId = null;
+  state.collapsed.clear();
   await ensureSeed();
   await loadData();
+  hasFitOnce = false;
   render();
   closeModals();
   showToast('Tout a été effacé.');
 }
 
+// ---------- Pan & zoom (souris, molette, tactile) ----------
+
+function bindPanZoom() {
+  const stage = $('tree-stage');
+  const pointers = new Map();
+  let panning = false;
+  let lastPan = null;
+  let lastPinchDist = 0;
+
+  function isInteractive(target) {
+    return target.closest('.node, .zoom-controls, .branch-actions, .search-results');
+  }
+
+  stage.addEventListener('pointerdown', e => {
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 1 && !isInteractive(e.target)) {
+      panning = true;
+      lastPan = { x: e.clientX, y: e.clientY };
+      stage.classList.add('panning');
+      stage.setPointerCapture(e.pointerId);
+    }
+    if (pointers.size === 2) {
+      panning = false;
+      const pts = [...pointers.values()];
+      lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    }
+  });
+
+  stage.addEventListener('pointermove', e => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointers.size >= 2) {
+      const pts = [...pointers.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const midX = (pts[0].x + pts[1].x) / 2;
+      const midY = (pts[0].y + pts[1].y) / 2;
+      if (lastPinchDist > 0 && dist > 0) {
+        zoomAt(midX, midY, dist / lastPinchDist, false);
+      }
+      lastPinchDist = dist;
+      return;
+    }
+
+    if (panning && lastPan) {
+      view.x += e.clientX - lastPan.x;
+      view.y += e.clientY - lastPan.y;
+      lastPan = { x: e.clientX, y: e.clientY };
+      applyView(false);
+    }
+  });
+
+  function endPointer(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) lastPinchDist = 0;
+    if (pointers.size === 0) {
+      panning = false;
+      lastPan = null;
+      stage.classList.remove('panning');
+    }
+  }
+  stage.addEventListener('pointerup', endPointer);
+  stage.addEventListener('pointercancel', endPointer);
+
+  stage.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = Math.exp(-e.deltaY * 0.0015);
+    zoomAt(e.clientX, e.clientY, factor, false);
+  }, { passive: false });
+}
+
 // ---------- Liaison des événements ----------
 
 function bindEvents() {
-  $('btn-home').addEventListener('click', () => setFocus(ROOT_ID));
+  $('btn-home').addEventListener('click', () => { state.selectedId = null; render(); fitView(true); });
   $('btn-add').addEventListener('click', () => $('file-input').click());
+  $('btn-add-branch').addEventListener('click', () =>
+    openBranchModal('add', { parentId: state.selectedId || ROOT_ID })
+  );
 
   $('file-input').addEventListener('change', e => {
     Array.from(e.target.files || []).forEach(enqueueUpload);
@@ -772,6 +1177,7 @@ function bindEvents() {
       'd', collapsed ? 'M7 10l5 5 5-5z' : 'M7 14l5-5 5 5z'
     );
   });
+  $('btn-clear-tray').addEventListener('click', clearFinishedUploads);
 
   let searchTimer;
   $('search-input').addEventListener('input', e => {
@@ -786,9 +1192,38 @@ function bindEvents() {
   document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', closeModals));
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModals(); });
 
+  // Zoom
+  $('btn-zoom-in').addEventListener('click', () => {
+    const r = $('tree-stage').getBoundingClientRect();
+    zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.25, true);
+  });
+  $('btn-zoom-out').addEventListener('click', () => {
+    const r = $('tree-stage').getBoundingClientRect();
+    zoomAt(r.left + r.width / 2, r.top + r.height / 2, 0.8, true);
+  });
+  $('btn-zoom-fit').addEventListener('click', () => fitView(true));
+
+  // Barre d'actions branche
+  $('ba-add').addEventListener('click', () =>
+    openBranchModal('add', { parentId: state.selectedId || ROOT_ID })
+  );
+  $('ba-rename').addEventListener('click', () => {
+    if (state.selectedId) openBranchModal('rename', { branchId: state.selectedId });
+  });
+  $('ba-collapse').addEventListener('click', toggleCollapseSelected);
+  $('ba-delete').addEventListener('click', deleteSelectedBranch);
+
+  // Modal branche
+  $('btn-save-branch').addEventListener('click', saveBranchModal);
+  $('branch-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveBranchModal();
+  });
+
+  // Réglages
   $('btn-settings').addEventListener('click', openSettings);
   $('btn-save-settings').addEventListener('click', saveSettings);
 
+  // Entrée
   $('btn-copy-latex').addEventListener('click', () => {
     const entry = state.entries.find(e => e.id === currentEntryId);
     if (!entry) return;
@@ -804,6 +1239,7 @@ function bindEvents() {
   $('btn-save-entry').addEventListener('click', saveEditForm);
   $('btn-delete-entry').addEventListener('click', deleteCurrentEntry);
 
+  // Sauvegarde
   $('btn-export').addEventListener('click', exportData);
   $('btn-import').addEventListener('click', () => $('import-file').click());
   $('import-file').addEventListener('change', e => {
@@ -813,24 +1249,27 @@ function bindEvents() {
   });
   $('btn-reset-all').addEventListener('click', resetAll);
 
+  // Redimensionnement fenêtre
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(renderTreeStage, 120);
+    resizeTimer = setTimeout(() => applyView(false), 120);
   });
 
+  // Glisser-déposer & coller
   const stage = $('tree-stage');
-  stage.addEventListener('dragover', e => { e.preventDefault(); });
+  stage.addEventListener('dragover', e => e.preventDefault());
   stage.addEventListener('drop', e => {
     e.preventDefault();
     Array.from(e.dataTransfer.files || []).forEach(enqueueUpload);
   });
   document.addEventListener('paste', e => {
-    const items = Array.from(e.clipboardData?.items || []);
-    items.forEach(it => {
+    Array.from(e.clipboardData?.items || []).forEach(it => {
       if (it.kind === 'file' && it.type.startsWith('image/')) enqueueUpload(it.getAsFile());
     });
   });
+
+  bindPanZoom();
 }
 
 // ---------- Démarrage ----------
