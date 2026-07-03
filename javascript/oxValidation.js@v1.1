@@ -1,0 +1,515 @@
+///////////////////////////////////////////////////////////////////////////////
+function OxValidateVATNumber(formName, ctrlName) {
+	var CT_EEC_VATNUMBER_ROOT = "DE,AT,BE,DK,ES,FI,FR,EL,IE,IT,LU,NL,PT,GB,SE,CY,CZ,EE,HU,LT,LV,MT,PL,SI,SK,RO,BG,HR";
+	var bResult = true;
+	var objForm = document.forms[formName];
+	var strValue = objForm[ctrlName].value.replace(/ /gi, "");
+	if (strValue.length) {
+		bResult = false;
+		if (strValue.length >= 10) {
+			var strCountry, strCountries = CT_EEC_VATNUMBER_ROOT;
+			strCountry = strValue.substr(0, 2);
+			strCountry = strCountry.toUpperCase()
+			if (strCountries.indexOf(strCountry) >= 0)
+				bResult = true;
+		}
+	}
+	return bResult;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+function OxValidateEmailCtrl(formName, ctrlName) {
+	var bResult = true;
+	var objForm = document.forms[formName];
+	var strValue = objForm[ctrlName].value;
+	if (strValue.length > 0) {
+		while ('' + strValue.charAt(strValue.length - 1) == ' ') strValue = strValue.substring(0, strValue.length - 1);
+		while ('' + strValue.charAt(0) == ' ') strValue = strValue.substr(1, strValue.length - 1);
+		if (strValue != objForm[ctrlName].value) objForm[ctrlName].value = strValue;
+		while ((strValue.length > 0) && (bResult)) {
+			var sEMail; var nIdx = strValue.indexOf(";");
+			if (nIdx > -1) {
+				sEMail = strValue.substr(0, nIdx);
+				strValue = strValue.substr(nIdx + 1);
+			}
+			else {
+				sEMail = strValue;
+				strValue = "";
+			}
+			var nEMailLen = sEMail.length;
+			var nIdxAT = sEMail.indexOf("@");
+			var nIdxDOT = sEMail.indexOf(".");
+			if (nEMailLen > 0) {
+				var strValidEMailChars = "@.-+_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+				for (var i = 0; (i < nEMailLen) && bResult; i++)
+					if (strValidEMailChars.indexOf(sEMail.charAt(i)) < 0) bResult = false;
+			}
+			if ((bResult) && (nIdxAT == -1 || nIdxAT == 0 || nIdxAT == (nEMailLen - 1))) bResult = false;
+			if ((bResult) && (nIdxDOT == -1 || nIdxDOT == 0 || nIdxDOT == (nEMailLen - 1))) bResult = false;
+			if ((bResult) && (sEMail.indexOf("@", (nIdxAT + 1)) != -1)) bResult = false;
+			if ((bResult) && (sEMail.substring(nIdxAT - 1, nIdxAT) == "." || sEMail.substring(nIdxAT + 1, nIdxAT + 2) == ".")) bResult = false;
+			if ((bResult) && (sEMail.indexOf(".", (nIdxAT + 2)) == -1)) bResult = false;
+		}
+	}
+	return bResult;
+}
+
+
+/*
+Name : {
+	type: text | password | number | custom		// Actualy not used but must be set for future use
+	name : "display name : "	// " : " will be automaticly removed if exists
+	disableRealTimeValidation: true / false	// prevent binding and inline validation 
+	link : {	// provide link to another control. if this control is modified, all controls listed in the array will be validated. This is not a validation, so there is no error message and no action to the validation
+		value: [ "ctrlName1", "CtrlName2", ...];
+	},
+	required : {
+		value: true | false,
+		message: "The field '#NAME#' IS mandatory."		//#NAME# will be replaced by name value ("display name") 
+		},
+	length : { 
+		value: 10,
+		message : "The field '#NAME#' must not contain more than #LENGTH# characters."	// #NAME# will be replaced by name value ("display name") and #LENGTH# by length value (10)
+	},
+	unsignedInt: {
+		value: true | false,
+		message : "The field '#NAME#' must be a positive integer."
+	},
+	minLength: {
+		value: 4,
+		message : "The field '#NAME#' must contain at least #MINLENGTH# characters."
+	},
+	maxLength: {  // same as length just to mirroring minLength
+		value: 16,
+		message : "The field '#NAME#' must not contain more than #LENGTH# characters."
+	},
+	min: {
+		value: 18,
+		message : "The field '#NAME#' must be >= at #MIN#."
+	},
+	max: {
+		value: 120,
+		message : "The field '#NAME#' must be <= at #MAX#."
+	},
+	charSet: {
+		value: "abcdefghijklmnopqrstuvwxyz-0123456789",
+		message : "The field '#NAME#' can only contains the folowing characters : '#CHARSET#'."
+	},
+	charSetU: {
+		value: "abcdefghijklmnopqrstuvwxyz-0123456789",
+		message : "The field '#NAME#' can only contains the following uppercase characters : '#CHARSET#'."
+	},
+	regExp: {
+		value: "/[a-zA-Z0-9\-]/g"
+		// If the error message is not defined here the default message will be used
+	},
+	customfn: {
+		value: function() { return true ; }
+		// If the error message is not defined here the default message will be used
+	},
+	defaultMessage: "The field '#NAME#' is invalid."
+}
+*/
+
+function OXValidation() {
+	var formEvaluation = {
+		form: "MForm",
+		fields: {}
+	}, pagLoaded = false, displayValidationMessage=false;
+	function addClass(el, cls) {
+		if (el) {
+			removeClass(el, cls);
+			el.className = el.className + " " + cls;
+		}
+	}
+	function removeClass(el, cls) {
+		if (el)
+			el.className = el.className.replace(new RegExp('\\b(' + cls + ')\\b'), '').replace(/\s{2}/, ' ').replace(/^\s+|\s+$/g, '');
+	}
+	var getElement = function (e) {
+		return (e.target !== "undefined") ? e.target : e.srcElement;
+	}
+	function validateCtrl(ctrl, name, displayMessage, checkCondition) {
+		var field = formEvaluation.fields[name];
+		if (!field ) //|| !ctrl)
+			return true;
+		var ctrlValue = (ctrl && ctrl.value) || "",
+			aValidationfn = {
+				"required": validateRequire,
+				"length": validateLength,
+				"unsignedInt": validateUnsignedInt,
+				"minLength": validateMinLength,
+				"maxLength": validateMaxLength,
+				"min": validateMin,
+				"max": validateMax,
+				"charSet": validateCharSet,
+				"charSetU": validateCharSetU,
+				"regExp": validateRegExp,
+				"customfn": validateCustomfn
+			};
+		var aProcessfn = {
+			"link": processLinks
+		};
+		function isNumber(n) {
+			return !isNaN(parseFloat(n)) && isFinite(n);
+		}
+		function validateUnsignedInt(field, value) {
+			if ( value || value === 0)
+				return ((value || (value === 0)) && (parseInt(value) == value)) == field.unsignedInt.value;
+			return true;
+		}
+		function validateRequire(field, value) {
+			return ((value ? true : false) && value.replace(/\s+/g, "") ? true : false);
+		}
+		function validateLength(field, value) {
+			if (value)
+				return value.length <= field.length.value;
+			return true
+		}
+		function validateMinLength(field, value) {
+			if (value)
+				return value.length >= field.minLength.value;
+			return true
+		}
+		function validateMaxLength(field, value) {
+			if (value)
+				return value.length <= field.maxLength.value;
+			return true
+		}
+		function validateMin(field, value) {
+			if (isNumber(value))
+				return parseFloat(value) >= field.min.value;
+			return true
+		}
+		function validateMax(field, value) {
+			if (isNumber(value))
+				return parseFloat(value) <= field.max.value;
+			return true
+		}
+		function validateCharSet(field, value) {
+			if (value)
+				for (var i = 0, n = value.length ; i < n ; i++)
+					if (field.charSet.value.indexOf(value.charAt(i)) < 0)
+						return false;
+			return true
+		}
+		function validateCharSetU(field, value) {
+			if (value) {
+				value = value.toUpperCase();
+				for (var i = 0, n = value.length ; i < n ; i++)
+					if (field.charSet.value.indexOf(value.charAt(i)) < 0)
+						return false;
+			}
+			return true
+		}
+		function validateRegExp(field, value) {
+			if (value) {
+				field.regExp.lastIndex = 0;
+				return field.regExp.value.test(value);
+			}
+			return true
+		}
+		function validateCustomfn(field, value) {
+			return field.customfn.value();
+		}
+		function processLinks(field, value) {
+			var objForm = document[formEvaluation.form];
+			var fields = formEvaluation.fields;
+			for (var i = 0, n = field.link.value.length; i < n; i++) {
+				var name = field.link.value[i];
+				if (fields[name] && fields[name].disableRealTimeValidation)
+					continue;
+				validateCtrl(objForm[name], name, false, false);
+			}
+		}
+		function formatCtrlName(name) {
+			if (name)
+				name = name.replace(/\s*\:\s*$/, '');
+			return name;
+		}
+		function getErrorMessage(validation, field) {
+			var errorMessage = field[validation].message || field.defaultMessage || "";
+			if (field.name)
+				errorMessage = errorMessage.replace(new RegExp('#NAME#'), formatCtrlName(field.name));
+			return errorMessage.replace(new RegExp('#' + validation.toUpperCase() + '#'), field[validation].value);
+		}
+		function conditional(field) {
+			var condition = field.condition
+			if (condition && condition.value)
+				return eval(condition.value);
+			return true;
+		}
+		if (checkCondition)
+			validateConditionalCtrls(false, false);
+
+		displayValidationMessage = displayMessage;
+		if (displayMessage || !field.disableRealTimeValidation) {
+			if (conditional(field))
+				for (var i in field) {
+					var processfn = aProcessfn[i] || null;
+					if (processfn)
+						processfn(field, ctrlValue);
+					var validationfn = aValidationfn[i] || null,
+						errorMessage = "";
+					if (validationfn) {
+						if (!validationfn(field, ctrlValue)) {
+							if (displayMessage) {
+								errorMessage = getErrorMessage(i, field);
+								if (errorMessage)
+									alert(errorMessage);
+							}
+							if (!ctrl)
+								return false;
+							if (ctrl.style.display !== 'none') {
+								addClass(ctrl, "validationError");
+								//CADTooltipsHelper({ show: true, nodeLink: ctrl, html: getErrorMessage(i, field), position: "right", cssBorderColor: "red" });
+								try {
+									if (displayMessage) ctrl.focus();
+								} catch (err) { }
+							}
+							return false;
+						}
+					}
+				}
+		}
+		removeClass(ctrl, "validationError");
+		displayValidationMessage = false;
+		return true;
+	}
+	function bindControl(ctrl, name) {
+		var bindEvent = function (el, eventName, eventHandler) {
+			if (el.addEventListener) {
+				el.addEventListener(eventName, eventHandler, false);
+			} else if (el.attachEvent) {
+				el.attachEvent('on' + eventName, eventHandler);
+			}
+			return el;
+		}
+		if (ctrl) {
+			var field = formEvaluation.fields[name];
+			field.event = {};
+			if (field && field.disableRealTimeValidation)
+				return;
+			field.event.change = function (e) {
+				var el = getElement(e);
+				validateCtrl(el, el.name, false, true);
+			}
+			bindEvent(ctrl, "change", field.event.change);
+
+			field.event.blur = function (e) {
+				var el = getElement(e);
+				if (el && el.tagName && el.tagName.toLowerCase() != "select")
+					validateCtrl(el, el.name, false, true);
+			}
+			bindEvent(ctrl, "blur", field.event.blur);
+
+			field.event.keyup = function (e) {
+				var el = getElement(e);
+				validateCtrl(el, el.name, false, true);
+			}
+			bindEvent(ctrl, "keyup", field.event.keyup);
+
+			field.event.paste = function (e) {
+				var el = getElement(e);
+				setTimeout(function () { validateCtrl(el.ctrl, el.name, false, true); }, 10);
+			}
+			bindEvent(ctrl, "paste", field.event.paste);
+
+			field.event.cut = function (e) {
+				var el = getElement(e);
+				setTimeout(function () { validateCtrl(el.ctrl, el.name, false, true); }, 10);
+			}
+			bindEvent(ctrl, "cut", field.event.cut);
+			validateCtrl(ctrl, name, false, true);
+		}
+	}
+	function unBbindControl(ctrl, name) {
+		var unBindEvent = function (el, eventName, eventHandler) {
+			if (el.removeEventListener) {
+				el.removeEventListener(eventName, eventHandler, false);
+			} else if (el.detachEvent) {
+				el.detachEvent('on' + eventName, eventHandler);
+			}
+			return el;
+		}
+		if (ctrl) {
+			var field = formEvaluation.fields[name];
+			if (field.event.change) {
+				unBindEvent(ctrl, "change", field.event.change);
+				field.event.change = null;
+			}
+			if (field.event.blur) {
+				unBindEvent(ctrl, "blur", field.event.blur);
+				field.event.blur = null;
+			}
+			if (field.event.keyup) {
+				unBindEvent(ctrl, "keyup", field.event.keyup);
+				field.event.keyup = null;
+			}
+			if (field.event.paste) {
+				unBindEvent(ctrl, "paste", field.event.paste);
+				field.event.paste = null;
+			}
+			if (field.event.cut) {
+				unBindEvent(ctrl, "cut", field.event.cut);
+				field.event.cut = null;
+			}
+			removeClass(ctrl, "validationError");
+		}
+	}
+	function addOnLoad(f) {
+		if (pagLoaded)
+			window.setTimeout(f, 0);
+		else if (window.addEventListener)
+			window.addEventListener("DOMContentLoaded", f, false);
+		else if (window.attachEvent)
+			window.attachEvent("onload", f);
+	}
+	function bindControls() {
+		var fields = formEvaluation.fields,
+				objForm = document[formEvaluation.form];
+		for (var i in fields)
+			bindControl(objForm[i], i);
+	}
+	function validateConditionalCtrls(displayMessage, conditional) {
+		if (!formEvaluation || !formEvaluation.fields || !formEvaluation.form)
+			return false;
+		var fields = formEvaluation.fields,
+				objForm = document[formEvaluation.form];
+		for (var i in fields)
+			if (fields[i].condition && validateCtrl(objForm[i], i, displayMessage, conditional))
+					return false;
+		return true;
+	}
+	function validateControls(displayMessage, conditional) {
+		if (!formEvaluation || !formEvaluation.fields || !formEvaluation.form)
+			return false;
+		var fields = formEvaluation.fields,
+				objForm = document[formEvaluation.form];
+		for (var i in fields)
+			if (!validateCtrl(objForm[i], i, displayMessage, conditional))
+				return false;
+		return true;
+	}
+	return {
+		// Initialize validation engine
+		initializeValidation: function () {
+			pagLoaded = false;
+			addOnLoad(function () {
+				pagLoaded = true;
+				bindControls();
+			});
+		},
+		initialized: function() {
+			return pageLoaded;
+		},
+		// Validate all controls before submit (pop alert)
+		validateControls: function () {
+			return validateControls(true, false);
+		},
+		// Validate control 
+		validateControl: function (name, displayMessage, conditional) {
+			if (!formEvaluation || !formEvaluation.fields || !formEvaluation.form)
+				return false;
+			var fields = formEvaluation.fields;
+			if (fields[name]) {
+				var objForm = document[formEvaluation.form];
+				return validateCtrl(objForm[name], name, displayMessage, conditional);
+			}
+			return false;
+		},
+		// Validate all controls (silent)
+		updateControlsStatus: function () {
+			return validateControls(false, true);
+		},
+		// Update FormName property
+		setFormName: function (formName) {
+			formEvaluation.form = formName;
+		},
+		// Retrieve FormName property
+		getFormName: function () {
+			return formEvaluation.form;
+		},
+		// Add new control to validate
+		addCtrlValidation: function (name, config, position) {
+			var fields = formEvaluation.fields;
+			if (!fields[name]) {
+				if (position !== undefined) {
+					var newFields = {};
+					var i = 0;
+					for (var field in fields) {
+						if ((position == i) || (position == field))
+							newFields[name] = config;
+						newFields[field] = fields[field];
+						i++;
+					}
+					if (!newFields[name]) newFields[name] = config;
+					formEvaluation.fields = newFields
+				} else
+					fields[name] = config;
+			} else {
+				for (var field in config) {
+					if (config.hasOwnProperty(field)) {
+						fields[name][field] = config[field];
+					}
+				}
+			}
+			if (pagLoaded) {
+				var objForm = document[formEvaluation.form];
+				bindControl(objForm[name], name);
+			}
+			return true;
+		},
+		// Remove control validation
+		removeCtrlValidation: function (name) {
+			var fields = formEvaluation.fields;
+			if (fields[name]) {
+				if (pagLoaded) {
+					var objForm = document[formEvaluation.form];
+					if (objForm[name])
+						unBbindControl(objForm[name], name);
+				}
+				delete fields[name];
+				return true;
+			}
+			return false;
+		},
+		// Remove control property validation
+		removeCtrlTypelValidation: function (name, type) {
+			var fields = formEvaluation.fields;
+			if (fields[name]) {
+				if (fields[name][type]) {
+					delete fields[name][type];
+					if (pagLoaded)
+						validateCtrl(document[formEvaluation.form][name], name, false, true);
+				}
+				return true;
+			}
+			return false;
+		},
+		// Update control validation
+		modifyCtrlValidation: function (name, config, position) {
+			var fields = formEvaluation.fields;
+			if (fields[name]) {
+				for (var field in config) {
+					if (config.hasOwnProperty(field))
+						fields[name][field] = config[field];
+				}
+				if (pagLoaded)
+					validateCtrl(document[formEvaluation.form][name], name, false, true);
+				return true;
+			}
+			else
+				return this.addCtrlValidation(name, config, position);
+		},
+		// get control validation
+		getCtrlValidation: function (name) {
+			var fields = formEvaluation.fields;
+			return (fields[name] ? fields[name] : null);
+		},
+		// Display Message property (return true if custom validation need to display Alert)
+		getDisplayValidationMessage : function() {
+			return displayValidationMessage;
+		}
+	}
+}

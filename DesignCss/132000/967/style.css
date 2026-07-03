@@ -1,0 +1,283 @@
+
+a#valPanier , a#returnShopping {
+text-decoration:none;
+}
+
+
+a#valPanier:hover font {
+background-position:0 -32px
+}
+
+a#returnShopping font, a#valPanier font  {
+    background-image: url("../../../Files/16323/panier/span.png");
+    background-position: right top ;
+    background-repeat: no-repeat;
+    margin: 0;    
+    padding: 4px 13px 6px 6px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+#pdtImgZone img {
+height : 80px;
+}
+
+/**/
+
+
+/* showCart */
+#showCartContainer{
+    height:0;
+    margin:0 auto;
+    position:relative;
+    width:980px;
+    z-index:500;
+    line-height: 0;
+    padding: 0
+}
+
+#dynamicCart {
+    position: absolute;
+    right: 0px;
+    text-align: center;
+    top: 70px;
+    width: 240px;
+    height: 60px;    
+    background-image: url("../../../Files/16323/_img-design/panierBg.png");
+    background-position: center center;
+    background-repeat: no-repeat;
+}
+
+#miniCartZone{
+    position: absolute;
+    top: 24px;
+    right: 30px;
+    display: block;
+}
+
+#dynamicCart #miniCartZone font.PBMainTxt{
+    font-size: 12px;    
+    font-weight: normal;
+    color: #333;
+}
+
+#dynamicCart #miniCartZone font.grandtotalprice{
+    font-size: 14px;    
+    font-weight: bold;
+}
+
+/* returnCart */
+#shopcartreturn{
+    text-align:left;
+}
+
+#shopcartbody{
+    position:absolute;
+    z-index:1000;
+    width:100%;
+    background-color:#111111;
+    filter:alpha(opacity=40);
+    opacity: 0.4;
+    text-align:center;
+}
+
+#shopcartcontainer{
+    position:absolute;
+    z-index:1001;
+    width:100%;
+    text-align:center;
+    clear:both;
+}
+
+#shopcartpreload{
+    width:300px;
+    margin:200px auto 0;
+    text-align:center;
+    height: 100px;
+    background: url("../../../Files/15269/addToCart/ajax-loader.gif") no-repeat center center scroll transparent;
+}
+
+#shopcartcontainer #blockCart{
+    margin:200px auto 0;
+    background: url("../../../Files/16323/img-shop/pop-up-shop.jpg") no-repeat scroll left center white;
+    border: 1px solid #FFFFFF;
+    font-size: 12px;
+    height: 241px;
+    margin: 200px auto 0;
+    padding: 0;
+    text-align: center;
+    width: 554px;
+    position: relative;
+}
+
+font.popItem{
+    color: #FFFFFF;
+    font-weight: bold;
+    left: 145px;
+    position: absolute;
+    text-align: center;
+    top: 55px;
+    _top: _50px;
+    width: 400px;
+}
+
+font.popItemPrice{
+    display: block;
+    color: #666;
+    font-size: 18px;
+}
+
+.blockCentral{
+    background-color: #FFFFFF;
+    color: #FFFFFF;
+    font-weight: bold;
+    height: 80px;
+    left: 200px;
+    position: absolute;
+    text-align: center;
+    top: 89px;
+    width: 300px;
+}
+
+a#returnShopping{
+background-image: url("../../../Files/16323/panier/normal.png");
+    background-position: left 1px;
+    background-repeat: no-repeat;
+    color: #302C17;
+    font-size: 9pt;
+    font-weight: normal;
+    left: 203px;
+    line-height: 2em;
+    margin: 0;
+    padding: 0px 9px;
+    position: absolute;
+    text-decoration: none;
+    top: 176px;
+    display: block;
+    width: 170px;
+}
+
+a#valPanier{
+background-image: url("../../../Files/16323/panier/normal.png");
+    background-position: left 1px;
+    background-repeat: no-repeat;
+    color: #302C17;
+    font-size: 9pt;
+    font-weight: normal;
+    left: 369px;
+    line-height: 2em;
+    margin: 0;
+     padding: 0px 9px ;
+    position: absolute;
+    text-decoration: none;
+    top: 176px;
+    
+    display: block;
+    width: 150px;
+}
+
+a#returnShopping:hover, a#valPanier:hover{
+    background-position: left -23px;
+    
+}
+
+a#returnShopping:hover font, a#valPanier:hover font{
+    background-position: right -24px;
+    color: #fff;
+}
+
+
+#dynamicCart .PBCurrency {
+ color: #000000;
+    font-size: 7pt;
+    font-weight: bold;
+}
+
+font.smallcartItem {
+    display: block;
+    height: 20px;
+    line-height: 20px;
+    position: absolute;
+    right: 27px;
+    text-align: right;
+    top: 25px;
+    width: 200px;
+    font-size: 11px;
+}
+
+font.smallcartItem span{
+    font-size: 12px;
+    font-weight: bold;
+}
+
+
+font.smallCartPrice{
+    position: absolute;
+    right: 0px;
+    display: block;
+    line-height: 20px;
+    height: 20px;
+    display: block;
+    width: 100px;
+    text-align: center;
+    top: 50px;
+    _top: 46px;
+}
+
+.imgMainCont{
+    width: 350px;
+    display: block;
+    float: left;
+}
+
+.imgMainCont .imgcontainer {
+    float: inherit;
+}
+
+.infoContainer .PBSalesPrice{
+    font-size: 26px;
+}
+
+#maincontainer #dynamicCart .miniCartExpand  font {
+    line-height: 22px;
+    text-align: left;
+    font-size: 12px;
+}
+
+.itemdetail .PBMainTxt {
+    color: #333333;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.miniCartExpand {
+    background-color: #FFFFFF;
+    display: block;
+    font-size: 12px;
+    position: absolute;
+    right: 0;
+    top: 50px;
+    width: 400px;
+    z-index: 11000;
+    border: 1px solid #999;
+    border-top: 0px;
+    text-align: left;
+   
+}
+
+.miniCartExpand img{
+    width: 20px;    
+}
+
+.miniCartExpand table tbody > tr td.cartItemHeader{
+    background-color: #FF9000;
+    background-image: url("../../../Files/16323/_img-design/degrade.png");
+    background-repeat: repeat-x;
+    background-position: bottom center;
+}
+
+.miniCartExpand table tbody > tr td{
+    padding: 4px;
+    border: 1px solid #999;
+}
+

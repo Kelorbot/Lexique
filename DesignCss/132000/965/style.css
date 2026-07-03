@@ -1,0 +1,296 @@
+#itemTabs { 
+    clear: both;
+}
+
+#itemTabs .tagLinks {
+    cursor: pointer;
+    display: block;
+    padding: 0;
+}
+#itemTabs .tagListElements {
+    list-style: none outside none;
+}
+#itemTabs .tagsListZone, #itemTabs .tagsZone {
+    background-color: white;
+}
+#itemTabs .taghighlighted {
+    background-color: #EBEBEB;
+}
+#itemTabs .tagsList {
+    margin: 0;
+    padding: 0;
+}
+
+
+#itemTabs .tagsList li {
+    float: left;
+    margin: 0 1px 0 0;
+}
+#itemTabs .tagsList a, #itemTabs .tagsList a span { /*Image onglet*/
+    background: url(../../../Files/16323/_img-menu/onglets.png) no-repeat scroll 0 0 transparent;
+    display: block;
+}
+#itemTabs .tagsList a span {
+    background-position: right top;
+    color: #FFFFFF;
+    line-height: 26px;
+    padding: 0 10px 0 0;
+}
+#itemTabs .tagsList a {
+    background-position: left top;
+    color: #222;
+    font-size: 12px;
+    padding: 0 0 0 10px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+#itemTabs .tagsList a.taghighlighted {
+    color: #000000;
+}
+#itemTabs .tagsList a.taghighlighted, #itemTabs .tagsList a:hover, #itemTabs .tagsList a:focus, #itemTabs .tagsList a:active {
+    background-position: left bottom;
+    outline: 0 none;
+}
+
+
+#itemTabs .tagsList a.taghighlighted span, #itemTabs .tagsList a:hover span, #itemTabs .tagsList a:focus span, #itemTabs .tagsList a:active span {
+    background-position: bottom right;
+    color: #000000;
+}
+
+#itemTabs .tagsList a:hover, #itemTabs .tagsList a:focus, #itemTabs .tagsList a:active {
+    cursor: pointer;
+}
+#itemTabs .tagsListZone {
+    border: 1px solid #C4C4C4;
+    border-radius: 0 0 10px 10px;
+    clear: both;
+    font-size: 12px;
+}
+#itemTabs .tagsZone {
+    margin: 10px;
+}
+
+
+/*****************/
+
+.itemdetail a#btnaddtocart.btnmain.btnaddtocart { /*bouton acheter sans hover*/
+    display:block;
+    position: absolute;
+    right: 0px;
+    top: 25px;
+    text-align: center;
+}
+
+.itemdetail a#btnaddtocart.btnmain.btnaddtocart span{
+    padding: 0;
+}
+
+
+.imgbordernone, .imgthumbnail, .imgmain, .imgcat {
+    border: medium none;
+    margin-left: 20px;
+}
+
+
+/***** Images container ****/
+.imgcontainer .imgthumblist ul { width: 100%}
+.imgcontainer .imgthumblist img { width : 70px }
+.imgcontainer { width: 300px; margin-left:20px;}
+
+img.imgmain{
+    width: 300px;
+    float: left;
+
+}
+
+
+.itemdetail #bodycolumn1{
+    display: none;    
+}
+
+.itemdetail #bodycolumn2{
+    margin: 0;    
+}
+
+.imgcontainer {
+    margin-right: 30px;
+    width: 300px;
+}
+
+.imgcontainer {
+    float: left;
+}
+
+.descContainer{
+    padding-right: 14px;
+    width: 570px;
+    float: right;
+}
+.infoContainer{
+    width: 570px;
+    float: right;
+    position: relative;
+    margin-right: 15px;
+	text-align: left;
+}
+
+body .itemdetail .PBItemTitle{
+    border-bottom : 3px solid #b50a0a;
+    width : 100%;
+    display: block;
+    font-size: 18px;
+}
+
+.itemdetail .PBSalesPrice {
+    color: #B50A0A;
+    display: block;
+    font-family: trebuchet MS;
+    font-size: 32px;
+    margin: 0 10px 0 0;
+}
+
+.itemdetail .sectiondataarea{
+    border: 0px;
+    padding: 0;
+
+}
+
+#itemTabs{
+    width: 100%;
+    display: block;
+    float: left;
+}
+
+#reinssuranceUp{
+    display: block;
+    height: 180px;
+    clear:both;
+    margin: auto;
+    padding: 20px 0;
+}
+
+#reinssuranceUp a {
+    display: block;
+    float: left;
+    height: 170px;
+    background-position: center center;
+    background-repeat: no-repeat;    
+}
+
+a.infoPaiement{
+    background: url(../../../Files/16323/_img-menu/fichePaiement.jpg);
+    width: 270px;
+    margin-left: 20px;
+}
+
+a.infoLivraison{
+    background: url(../../../Files/16323/_img-menu/ficheLivraison.jpg);
+    width: 281px;
+    margin: 0 55px;
+}
+
+a.infoContact{
+    background: url(../../../Files/16323/_img-menu/ficheContact.jpg);
+    width: 270px;
+}
+
+
+/* WB - Conteneur Global */
+#mainWbContent {
+    position: absolute;
+    left:0;
+    width: 100%;
+    z-index: 1000;
+} 
+
+/* WB - Conteneur Background */
+#bodyWbContent {
+    background-color: #000000;
+    height: 100%;
+    opacity: 0.6;
+    position: absolute;
+    width: 100%;
+    filter:alpha(opacity=80);
+    left:0;
+}
+
+/* WB - Style du gabarit par défaut */
+#wbContent {
+    margin:  0 auto;
+    margin-top:200px;
+    position: relative;
+    width: 600px;;
+    padding : 20px;
+    background-image: url('../../../Files/16323/_img-menu/menuBg.jpg');
+    background-position: center center;
+    border: 2px solid #9f8958;
+}
+
+/* WB - Style du gabarit autre  */
+#mainWbContent .contactForm{ width : 600px; }
+
+/* WB - Style du bouton retour  */
+a#goToSite{ 
+    color:#ff8c03;
+    font-size:11px;
+    display: block;
+    margin-bottom: 10px;
+}
+
+a#goToSite:hover{
+    text-decoration:underline;
+}
+
+#wbContent .PBMainTxt{
+    color:#fff;
+}
+
+.containerImg{
+    float: left;
+    height: auto;
+    width: 350px;
+    position: relative;
+    top: -90px;
+	}
+
+#maincontainer.itemdetail .PBOptionInfo .PBMainTxt {
+    font-size:12px;
+}
+
+#maincontainer.itemdetail .PBOptionInfo .PBShortTxt{
+    font-size:12px;
+    font-weight:bold;
+}
+
+#maincontainer.itemdetail .PBRelatedPdtTitle{
+    color:#286b76;
+    font-size: 16px;
+    font-weight: bold;
+
+}
+
+#maincontainer.itemdetail .PBLayoutTable .PBCurrency{
+    color:#ca2020;
+}
+
+.itemdetail #bodycolumn2{
+    margin: 0 10px;
+	width: auto;
+}
+
+.itemdetail .PBItemPrice .PBStrike, .itemdetail .PBItemPrice .PBDiscount {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: bold;
+    margin-right: 3px;
+}
+
+.itemdetail .sectiondata {
+    border: 0 none;
+    margin: 0 0 10px;
+}
+
+.imgMainCont{
+	margin-top: -80px;
+}

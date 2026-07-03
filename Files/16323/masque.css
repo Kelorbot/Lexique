@@ -1,0 +1,83 @@
+
+#bodycolumn2.scriptFacet{
+    margin-left: 10px;
+}
+
+#bodycolumn1.scriptFacet{
+    display: none;
+}
+
+.blockfacetsContainer {
+    border-right: 0 none;
+    display: block;
+    left: -151px;
+    position: absolute;
+    top: 4px;
+    width: 151px;
+    border-color: #333;
+}
+
+.blockMarketContainer{
+    border-right: 0 none;
+    display: block;
+    right: -115px;
+    position: absolute;
+    top: 4px;
+    width: 115px;
+    border-color: #333;
+}
+
+.blockMarketContainer .innerMarketContainer{
+    width: 115px;
+    display: block;
+}
+
+
+.blockMarketContainer .blockmktg .itemlist .imgthumbnail {
+    width: 60px;
+}
+
+.blockMarketContainer .blockmktg .itemlist .PBShortTxt{
+    font-size: 11px;
+}
+
+
+.blockMarketContainer  .blockmktg .itemlist .PBItemPrice .PBCurrency{
+    font-size: 14px;
+}
+
+.blockMarketContainer  .blockmktg .itemlist .sectiondataarea{
+    padding: 0 5px;
+
+}
+
+.blockmktg .itemlist .item, .blockmktg .itemlist .sectiondata{
+    margin: 0
+}
+
+.blockfacetsContainer #blockfacets {
+    width: 151px;
+    display: block;
+    -webkit-border-top-left-radius: 10px;
+    -webkit-border-bottom-left-radius: 10px;
+    -moz-border-radius-topleft: 10px;
+    -moz-border-radius-bottomleft: 10px;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+#blockfacets.menuFixed, .innerMarketContainer.menuFixed{
+    position: fixed ;
+    top: 0px;
+}
+
+
+.blockfacets .title {
+    font-family: 'chunkfive_romanregular';
+    font-size: 15px;
+    margin: 0;
+    padding: 0;
+    text-align: left;
+    font-weight: normal;
+    color: #B50A0A
+}

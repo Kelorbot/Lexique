@@ -1,0 +1,171 @@
+/*Position du Menu Vertical*/
+body.PB #menu_extend{
+    position:absolute;
+    top : 133px;
+    left : -3px;
+    font-family:arial;
+    font-size:12px;
+    width: 980px;
+    text-align: left;
+}
+
+#maincontainer.itemdetail #menu_extend .PBMainTxt {
+    font-size: 12px;
+    font-weight: normal;
+    color: #fff;
+}
+
+/*Style des Textes*/
+#menu_extend .zonesTD .PBMainTxt{
+    font-weight:normal;	
+    margin : 3px 5px;
+}
+
+/*Titre du Menu*/
+#menu_extend .zonesTD .menu_extend_title{
+    font-weight : bold ;
+    font-size : 14px ;
+    margin : 0;
+}
+
+/*Style des Colonnes*/
+#menu_extend td.menu_extend_col{
+    width : auto;
+    margin : 10px;
+    border-right : 1px dotted #333 ;
+    padding : 10px;
+}
+
+#menu_extend .tagListElements {
+    display: inline-block;
+    list-style: none outside none;
+    line-height: 28px;
+    height: 46px;
+    padding : 0px ;
+    width : auto;
+    float: left;
+    _display:inline;
+    _float:left;
+}
+
+#menu_extend #menuTabs, #subTabs, .zonesTD{width:100%;}
+
+#menu_extend .tagsZone {
+    width: 980px;
+    height: 368px;
+    display:block;
+    position: absolute;
+    z-index: 9998;
+    
+}
+
+#menu_extend  .tabsTD{
+
+    position: relative;
+    z-index: 9999;
+}
+
+#menu_extend .tagLinks {
+    cursor: pointer;
+    padding: 0 10px; 
+    height: 46px;
+    display: block;
+    _display: inline;
+    background: transparent;
+}
+
+#menu_extend .tagsListZone,#menu_extend .tagsZone {
+    width: 100%;
+    height: 100%;
+}
+
+#menu_extend .tagsListZone,#menu_extend .tagsZone {
+    top: -20px;
+}
+
+
+#menu_extend .tagsList {
+    margin: 0;
+    padding: 0;
+}	
+
+/*Style Hover du Menu Horizontal*/	
+#menu_extend .taghighlighted {
+    background: transparent;
+    background-image: url('../../../Files/16323/_img-menu/hmenuHover.png');
+    background-position: top center;
+    background-repeat: no-repeat;
+}
+
+#menu_extend span.taghighlighted .PBMainTxt{
+    background: transparent;
+    color:#fff;
+}
+
+#menu_extend .tagsZone .menu_extend_sub{
+       background-image: url('../../../Files/16323/Img/11/menuBgV2.jpg');
+    background-position: center center;
+    background-repeat: no-repeat;
+    height: 368px;
+    width: 980px;
+}
+
+#menu_extend .tagsZone .menu_extend_col{
+    position: absolute;
+    width: 970px;
+    top: 120px;
+    background-image: url('../../../Files/16323/_img-menu/hmenuSubMenuBg.png');
+    left: 4px;    
+    padding: 10px;
+}
+
+#menu_extend .tagsZone .menu_extend_col  > table a {
+
+}
+
+#maincontainer.itemdetail #menu_extend .tagsZone .menu_extend_col a .PBMainTxt,
+#maincontainer #menu_extend .tagsZone .menu_extend_col a .PBMainTxt {
+    color: #fff;
+    font-size: 14px;
+    text-decoration: none;
+    font-family: trebuchet MS;
+}
+
+#maincontainer.itemdetail #menu_extend .tagsZone .menu_extend_col a:hover .PBMainTxt,
+#maincontainer #menu_extend .tagsZone .menu_extend_col a:hover .PBMainTxt{
+    color: #ff8c03;
+    text-decoration: none;
+}
+
+#maincontainer.itemdetail #menu_extend .tagsZone .menu_extend_col .PBSTitle{
+    color: #ff8c03;
+}
+
+#maincontainer.itemdetail #menu_extend .menu_extend_title,
+#maincontainer #menu_extend .menu_extend_title
+{
+    position: absolute;
+    top: 80px;
+    left: 30px;
+    color: #fff;
+    font-size: 28px;
+    text-decoration: none;
+    font-family: trebuchet MS;
+    width: 400px;
+}
+
+
+#maincontainer #menu_extend .imgMenu{
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 10000;
+}
+
+#menu_extend .PBMainTxt{color:#fff; font-size: 12px;}
+
+#maincontainer.itemdetail #menu_extend .tagsZone .menu_extend_col .PBSTitle, #maincontainer #menu_extend .tagsZone .menu_extend_col .PBSTitle {
+    color: #FF8C03;
+}
+
+

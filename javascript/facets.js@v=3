@@ -1,0 +1,290 @@
+﻿function facetContainClass(elem, className) {
+	return ((' ' + elem.className + ' ').indexOf(' ' + className + ' ') >= 0);
+}
+function facetAddClass(elem, className) {
+	if (elem) {
+		var cls = elem.className;
+		if ((' ' + cls + ' ').indexOf(' ' + className + ' ') < 0) elem.className = cls + (cls ? ' ' : '') + className;
+	}
+}
+function facetRemoveClass(elem, className) {
+	if (elem && facetContainClass(elem, className)) {
+		var classList = elem.className.split(' ');
+		var from = 0, len = classList.length;
+		for (; from < len; from++)
+			if (classList[from] === className) {
+				classList.splice(from, 1);
+				elem.className = classList.join(' ');
+				return;
+			}
+	}
+}
+function facetToggleClass(elem, className) {
+	if (elem) facetContainClass(elem, className) ? facetRemoveClass(elem, className) : facetAddClass(elem, className);
+}
+function toggleExtraFacetValue(facetTypeID) {
+	var input = document.getElementById('expandedfacets'),
+		elem = document.getElementById('facet' + facetTypeID),
+		moreOrLess = document.getElementById('facetshowextra' + facetTypeID),
+		hideClass = 'hideextra',
+		toRemove,
+		toAdd;
+	if (elem && input) {
+		var cls = elem.className;
+		if (facetContainClass(elem, hideClass)) {
+			facetRemoveClass(elem, hideClass);
+			input.value += (input.value.length ? ',' : '') + facetTypeID;
+			moreOrLess.innerHTML = toggleExtraFacetValue.lessValue;
+			facetRemoveClass(elem, hideClass);
+			toAdd = 'facetshowless';
+			toRemove = 'facetshowmore';
+		} else {
+			facetAddClass(elem, hideClass);
+			var expandedfacets = input.value,
+				facets = expandedfacets.split(',');
+			for (var idx = 0, count = facets.length; idx < count; idx++) {
+				if (facets[idx] == facetTypeID) {
+					facets.splice(idx, 1);
+					expandedfacets = facets.join(',');
+					idx=count;
+				}
+			}
+			input.value = expandedfacets;
+			moreOrLess.innerHTML = toggleExtraFacetValue.moreValue;
+			toAdd = 'facetshowmore';
+			toRemove = 'facetshowless';
+		}
+		if ((moreOrLess = moreOrLess.parentNode) && (moreOrLess = moreOrLess.parentNode)) {
+			facetAddClass(moreOrLess, toAdd);
+			facetRemoveClass(moreOrLess, toRemove);
+		}
+	}
+}
+function facetReset(facetTypeID) {
+	var input = document.getElementById('selectedfacets'), selectedfacets;
+	if (input) {
+		var source = '' + facetTypeID + ':';
+		selectedfacets = input.value;
+		if (selectedfacets.length) {
+			var found = false, facets = selectedfacets.split(','), validFacets = [];
+			for (var idx = 0, count = facets.length; idx < count; idx++) {
+				if (facets[idx].substr(0, source.length) != source) {
+					validFacets.push(facets[idx]);
+				}
+			}
+			input.value = validFacets.join(',');
+		}
+		SubmitAction(facetAction);
+	}
+}
+function toggleSelectedFacetClass(optionValueID) {
+	facetToggleClass(document.getElementById('facetvalue' + optionValueID), 'selectedfacet');
+}
+function cumulativeFacetClicked(facetTypeID, optionValueID) {
+	var input = document.getElementById('selectedfacets'), selectedfacets;
+	if (input) {
+		var source = '' + facetTypeID + ':' + optionValueID;
+		toggleSelectedFacetClass(optionValueID);
+		selectedfacets = input.value;
+		if (selectedfacets.length) {
+			var found = false, facets = selectedfacets.split(',');
+			for (var idx = 0, count = facets.length; idx < count; idx++) {
+				if (facets[idx] == source) {
+					facets.splice(idx, 1);
+					selectedfacets = facets.join(',');
+					found=true;
+					idx=count;
+				}
+			}
+			if (!found) selectedfacets += ',' + source;
+		} else {
+			selectedfacets = source;
+		}
+		input.value = selectedfacets;
+		SubmitAction(facetAction);
+	}
+}
+function exclusiveFacetClicked(facetTypeID, optionValueID) {
+	var input = document.getElementById('selectedfacets'), selectedfacets;
+	if (input) {
+		var source = '' + facetTypeID + ':',
+			len = source.length;
+		toggleSelectedFacetClass(optionValueID);
+		selectedfacets = input.value;
+		if (selectedfacets.length) {
+			var facets = selectedfacets.split(',');
+			for (var idx = 0, count = facets.length; idx < count; idx++) {
+				if (facets[idx].substr(0, len) == source) {
+					facets.splice(idx, 1);
+					selectedfacets = facets.join(',');
+					idx=count;
+				}
+			}
+			selectedfacets += ',' + source;
+		} else {
+			selectedfacets = source;
+		}
+		input.value = selectedfacets + optionValueID;
+		SubmitAction(facetAction);
+	}
+}
+function applyRange(facetTypeID, min, max) {
+	var input = document.getElementById('selectedfacets');
+	if (input) {
+		var range = '' + facetTypeID + ':',
+			len = range.length,
+			selectedfacets = input.value;
+		if (selectedfacets.length) {
+			var facets = selectedfacets.split(',');
+			for (var idx = 0, count = facets.length; idx < count; idx++) {
+				if (facets[idx].substr(0, len) == range) {
+					facets.splice(idx, 1);
+					selectedfacets = facets.join(',');
+					idx = count;
+				}
+			}
+		} else {
+			selectedfacets = '';
+		}
+		range += min + '|' + max;
+		if (selectedfacets.length) {
+			selectedfacets += ',';
+		}
+		selectedfacets += range;
+		input.value = selectedfacets;
+		SubmitAction(facetAction);
+	}
+}
+function rangeChanged(facetTypeID, skipSubmit) {
+	var input = document.getElementById('selectedfacets'),
+		min = document.getElementById('facetmin' + facetTypeID),
+		max = document.getElementById('facetmax' + facetTypeID);
+
+	if (input && min && max) {
+		var range = '' + facetTypeID + ':',
+			len = range.length,
+			selectedfacets = input.value,
+			add = false;
+
+		if (selectedfacets.length) {
+			var facets = selectedfacets.split(',');
+			for (var idx = 0, count = facets.length; idx < count; idx++) {
+				if (facets[idx].substr(0, len) == range) {
+					facets.splice(idx, 1);
+					selectedfacets = facets.join(',');
+					idx=count;
+				}
+			}
+		} else {
+			selectedfacets = '';
+		}
+		if (facetContainClass(min, 'facetrangemodified')) {
+			range += min.value.substr(0,8);
+			add = true;
+		}
+		range += '|';
+		if (facetContainClass(max, 'facetrangemodified')) {
+			range += max.value.substr(0,8);
+			add = true;
+		}
+
+		if (add) {
+			if (selectedfacets.length) {
+				selectedfacets += ',';
+			}
+			selectedfacets += range;
+		}
+		input.value = selectedfacets;
+		if (skipSubmit != true) SubmitAction(facetAction);
+	}
+}
+function rangeCheck(input) {
+	if (!facetContainClass(input, 'facetrangemodified') || (input.value.length == 0)) {
+		var def = input.getAttribute('default');
+		if (input.value != def) {
+			input.value = def;
+		}
+	}
+}
+function rangeKeydown(event, facetTypeID) {
+	var key = (event.keyCode ? event.keyCode : event.charCode),
+		skipSubmit = (key != 13);
+	setTimeout(function () {
+		var min = document.getElementById('facetmin' + facetTypeID),
+			max = document.getElementById('facetmax' + facetTypeID),
+			modifiedClass = 'facetrangemodified';
+
+		if (min.value == min.getAttribute('default')) {
+			facetRemoveClass(min, modifiedClass);
+		} else {
+			facetAddClass(min, modifiedClass);
+		}
+		if (max.value == max.getAttribute('default')) {
+			facetRemoveClass(max, modifiedClass);
+		} else {
+			facetAddClass(max, modifiedClass);
+		}
+		rangeChanged(facetTypeID, skipSubmit);
+	}, 50);
+}
+function facetSliderInit(facetTypeID, rangeMin, rangeMax, min, max) {
+	var range = $('#facetsliderrange' + facetTypeID),
+		labels = [$('.min', range), $('.max', range)],
+		handleIdx = 0,
+		range = rangeMax - rangeMin + 1,
+		step = Math.floor(range / 1000);
+	step = (step <= 0) ? 1 : step;
+	$('#facetslider' + facetTypeID).slider({
+		min: rangeMin,
+		max: rangeMax,
+		step: step,
+		range: true,
+		values: [min, max],
+		start: function (event, ui) {
+			handleIdx = $(ui.handle).data('index.uiSliderHandle');
+		},
+		slide: function (event, ui) {
+			labels[handleIdx].html(ui.value);
+		},
+		change: function (event, ui) {
+			if (ui.values[0] == rangeMin && ui.values[1] == rangeMax) facetReset(facetTypeID);
+			else applyRange(facetTypeID, ui.values[0], ui.values[1]);
+		}
+	});
+}
+
+function stockCheckboxClick(facetTypeID) {
+	//console.log(">>>>> stockCheckboxClick CALLED");
+	var input = document.getElementById("selectedfacets"),
+		facetstock = document.getElementById("facetstock"),
+		min = document.getElementById("facetmin" + facetTypeID),
+		modifiedClass = 'facetrangemodified';
+	//console.log(" min.getAttribute('default'):" + min.getAttribute('default'));
+	if (!isNaN(min.getAttribute('default'))) {
+		if (min.getAttribute('default') == 0) {
+			if (facetstock.checked) {
+				min.value = 1;
+			} else {
+				min.value = 0;
+			}
+		} else {
+			if (facetstock.checked) {
+				//if(min.getAttribute('default')<0) {
+					min.value=1
+				//} else {
+				//	min.value = min.getAttribute('default');
+				//}
+			} else {
+				min.value = min.getAttribute('default');
+			}
+		}
+		if (facetstock.checked) {
+			facetAddClass(min, modifiedClass);
+		} else {
+			facetRemoveClass(min, modifiedClass);
+		}
+		var skipSubmit = false;
+		rangeChanged(facetTypeID, skipSubmit)
+	}
+	//console.log("<<<<< stockCheckboxClick END");
+}

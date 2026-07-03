@@ -1,0 +1,328 @@
+
+/*** Rajout Menu + Facet ***/
+/**************************** Horizontal **************************************/
+#hmenu,  #hmenu li, #hmenu li div, #hmenu li div ul, #hmenu li div ul li { *z-index: 100; }
+#hmenu { float: right; list-style: none; margin: 0; padding: 0; width: 100%; }
+#hmenu > li.begin { display: none; }
+#hmenu > li.end { display: none; }
+#hmenu > li.menusep { }
+#hmenu > li.mispacer { width: 10px; }
+#hmenu > li.miimg { border: none; }
+#hmenu li.miimg a, #hmenu li.miimg span { padding: 0; }
+#hmenu > li.miimg > a img, #hmenu > li.miimg > a { max-height: 100%; }
+#hmenu li ul.submenu li.miimg img { max-width: 100%; }
+#hmenu > li.auto > a img, #hmenu > li.miimg > a { height: 100%; }
+
+#hmenu > li > a.menu,
+#hmenu li ul.submenu,
+#hmenu li ul.submenu li a, 
+#hmenu li ul.submenu li span{
+    -webkit-transition: all .2s ease-out;
+    -moz-transition: all .2s ease-out;
+    -o-transition: all .2s ease-out;
+    transition: all .2s ease-out;
+}
+
+#headermenu {
+    position: absolute;  
+    left: 1px;
+    top: 136px;
+    width: 978px;
+    margin: 0 auto;
+    z-index: 250;
+	background: transparent;
+}
+
+#hmenu > li {
+    line-height: 28px;
+    height:28px;
+    float: right;
+    position: relative;
+	border: 0;
+}
+
+#hmenu > li > a.menu, #hmenu > li > span {
+    white-space: nowrap;
+    display: block;
+    text-decoration: none;
+    padding: 0 10px;
+    color: #fff;
+    font-size: 12px;
+	border-right: 1px solid #c0c0c0;
+}
+
+#hmenu > li.mitext > a.menu, #hmenu > li.mitext > span {    font-weight: normal;  }
+#hmenu > li.mititle > a.menu, #hmenu > li.mititle > span  {    
+    font-weight: normal; 
+    color:#e3d3b3; 
+	}
+
+#hmenu > li > a.menu:hover, #hmenu > li > a.menu.subactive {
+    color: #fff; 
+    background-color:#4D7F83;   
+    background: transparent;
+    background-image: url('../../../Files/16323/_img-menu/hmenuHover.png');
+    background-position: top center;
+    background-repeat: no-repeat;	
+}
+
+/**************************** Horizontal Sous-menu**************************************/
+#hmenu li ul.submenu{
+    width: 220px;
+    list-style: none;
+    position: absolute;
+    visibility: hidden;  
+    top: 100%;
+    margin: 0;
+    padding:0;
+    background-image: none;	
+    background-color:#4D7F83;
+    border-color: #4D7F83;
+    border-style: solid;
+    border-width: 0 1px 1px 1px;
+    color: #fff;
+}
+
+#hmenu li:not(.menuright) ul.submenu{ right: 0px; left: inherit }
+#hmenu li.menuright ul.submenu{ right: 0; }
+#hmenu li ul.submenu li { text-align: left; *font-size : 0;   *line-height : 0; }
+#hmenu li ul.submenu a, #hmenu li ul.submenu span { display: block; padding: 0 10px;}
+#hmenu li ul.submenu li.begin{ display: none; }
+#hmenu li ul.submenu li.end{ display: none; }
+#hmenu li ul.submenu li.mispacer{ height: 10px; }
+#hmenu li ul.submenu li.auto img{ width: 100%; }
+#hmenu li ul.submenu li.miimg {  text-align: center; padding: 5px 0; line-height: 0; }
+#hmenu li ul.submenu li.miimg  a, #hmenu li ul.submenu li.miimg  span  {  }
+#hmenu ul.submenu li.mititle span, #hmenu ul.submenu li.mititle a {font-weight: bold;}
+#hmenu li ul.submenu li.mitext span, #hmenu li ul.submenu li.mitext a { font-weight: normal;}
+
+#hmenu li ul.submenu li.misep{
+    border: none;
+    margin: 10px 0;
+    height: 1px;
+    background-color: #fff;
+}
+
+#hmenu li ul.submenu li a, #hmenu li ul.submenu li span{
+    color: #fff;
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 24px;
+    text-decoration : none;
+}
+
+#hmenu li ul.submenu li.mititle a:hover, #hmenu li ul.submenu li.mitext a:hover {
+    color: #000;
+    background-color: #fff;
+    background-image: none;
+}
+
+/** Home **/
+#tabs_container ul.tagsList{ Margin: 0 ; padding: 0 ; height: 50px; }
+#tabs_container { margin-left: 5px ; padding: 0 ; height: 50px; }
+
+/*** Facet ***/
+.facettypecolorlist .facetvalue{ display: none; }
+.facettypecolorlist li { float: left; margin: 2px;}
+.blockfacet .blockarea{ margin: 0; }
+
+.blockfacet .facetlist{ 	margin: 5px; }
+
+.blockfacetsContainer .blockfacet .title{
+	background-color: #4D7F83;
+	font-family: arial;
+	font-size: 14px;
+	padding: 5px;
+	color: #fff;
+	display: block;
+	font-weight: bold;
+}
+
+.blockshortcut .blockfacet .facetreset a{
+	color: #ff9000;
+	padding: 3px;
+	display: inline-block;
+}
+
+body .blockfacetsContainer #blockfacets {
+    width: 151px;
+    display: block;
+    -moz-border-radius-topleft: 0px;
+    -moz-border-radius-bottomleft: 0px;
+	border-radius: 0;
+}
+
+.facettypecolorlist .facetcolor{
+	width: 20px;
+	height: 20px;
+}
+
+#facet151944 li, #blockfacet183428 li {
+	background-image: url('../../../Files/16323/ico/alien.jpg');
+	background-position: left center;
+	background-repeat: no-repeat;
+	height: 25px;
+	line-height: 25px;
+	background-size: 20px auto; 
+	padding-left: 23px;
+	}
+	
+.facettypeclasslist .facet a{
+	color: #333;
+}
+
+.facettypeclasslist .facet.selectedfacet a{
+	color: #ff9000;
+}	
+	
+#facet151944 .selectedfacet{
+	filter : alpha(opacity=70);
+    opacity : 0.7;
+	font-weight: bold;
+	color: #B50A0A;
+}
+	
+#facet151944 input,
+#facet151944 .Facetvaluecount,
+#facet183428 .Facetvaluecount,
+#facet183428 input{
+	display: none;
+}
+
+#facet151944 #facetvalue797058{ background-image: url('../../../Files/16323/ico/catch.jpg'); }
+#facet151944 #facetvalue797056{ background-image: url('../../../Files/16323/ico/halloween.jpg'); }
+#facet151944 #facetvalue797059{ background-image: url('../../../Files/16323/ico/alien.jpg'); }
+#facet151944 #facetvalue1040410{ background-image: url('../../../Files/16323/ico/sexy.jpg'); }
+#facet151944 #facetvalue797057{ background-image: url('../../../Files/16323/ico/hero.jpg'); }
+#facet151944 #facetvalue797066{ background-image: url('../../../Files/16323/ico/wwe.jpg'); }
+#facet183428 #facetvalue1037669{ background-image: url('../../../Files/16323/ico/adult.jpg'); }
+#facet183428 #facetvalue1033550{ background-image: url('../../../Files/16323/ico/kid.jpg'); }
+
+
+#facetBlock #facet151944 li , #facetBlock #facet183428 li{
+	height: 30px;
+	line-height: 30px;
+	background-size: 30px auto;
+	padding-left: 40px;
+}
+
+/*** Facet Home ***/
+
+#facetBlock{
+	background-color: #fafafa;
+	border: 1px solid #f0f0f0 !important;
+	width: 100%;
+}
+
+#facetBlock  .blockfacet .title{
+	font-family: arial;
+	font-size: 14px;
+	padding: 5px;
+	color: #4D7F83;
+	display: block;
+	font-weight: bold;
+	border-bottom: 2px solid #999
+}
+
+#facetBlock .blockfacets{
+	
+}
+
+#facetBlock .blockfacets .blockfacet{
+	width: 24%;
+	float:left;
+	border-right: 1px solid #fff
+}
+
+.col4#facetBlock .blockfacets .blockfacet{ width: 24%; margin-right: 5px; }
+.col3#facetBlock .blockfacets .blockfacet{ width: 33%; }
+.col2#facetBlock .blockfacets .blockfacet{ width: 49%; }
+
+.facetTitle{
+	color: #d22f2f;
+	display: block;
+	font-family: '4990810regular';
+	font-size: 24px;
+	font-weight: normal;
+	text-transform: normal
+}
+
+#facetBlock  #blockfacet151944{
+	width: 420px;
+	}
+
+	
+/** A Cleaner **/
+#facetBlock  #blockfacet151944 li{
+	width: 28%;
+	float: left;
+}
+
+.webblock #facetBlock .blockfacets .blockfacet#blockfacet183428 {
+	width: 120px;
+}
+
+.webblock #facetBlock .blockfacets .blockfacet#blockfacet-2 {
+	width: 150px;
+}
+
+.webblock #facetBlock .blockfacets .blockfacet#blockfacet151944 {
+	width: 430px;
+}
+
+#facetBlock #blockfacet151944 li {
+	width: 100px;
+	float: left;
+}
+
+#facetBlock .blockfacet .title {
+	border-bottom: 1px solid #c0c0c0;
+}
+
+.itemlist .blockfacets .title {
+    font-family:  arial;
+    font-size: 15px;
+    margin: 0;
+    padding: 0;  
+    background-color: #4D7F83;
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 30px;
+    text-align: center;
+    text-decoration: none;
+}
+
+
+.facettypecolorgrid .facetcolor {
+width: 22px;
+height: 22px;
+margin: 0 2px 4px 0;
+}
+
+.itemlist .imgthumbnail {
+margin: 10px;
+max-width: 200px;
+max-height: 140px;
+}
+
+#facetBlock .blockfacet .blockarea {
+	position: relative;
+}
+
+#facetBlock .blockshortcut .blockfacet .facetreset a {	
+	position: absolute;
+	top: 3px;
+	right: 0;
+}
+
+#hmenu > li > a.menu,
+#hmenu li ul.submenu,
+#hmenu li ul.submenu li a, 
+#hmenu li ul.submenu li span,
+.facettypecolorlist .facetcolor{
+    -webkit-transition: all .2s ease-out;
+    -moz-transition: all .2s ease-out;
+    -o-transition: all .2s ease-out;
+    transition: all .2s ease-out;
+}

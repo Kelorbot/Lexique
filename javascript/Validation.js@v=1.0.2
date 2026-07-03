@@ -1,0 +1,357 @@
+function validatePassword(objForm, strName, strErrMsg, bReturnValue){
+	var bResult = false,
+		//RegExp = /[a-zA-Z0-9\-]/g,
+		RegExp = /^[a-zA-Z0-9\*\$\@\&\(\)\[\]\{\}\=\#\.\-\!\?\+\/\£\€\%]+$/g,
+		bConfirmError = false,
+		strPassword = objForm[strName].value;
+	if ( strPassword.length >= 4 && strPassword.length <= 14 ) {
+		if ( RegExp.test(strPassword) ) {
+			bResult = true;
+		}
+	}
+	if ( bResult == false ) {
+		objForm[strName].focus();
+		if ( bReturnValue == true ) {
+			return bResult;
+		} else {
+			alert(strErrMsg);
+		}
+	}
+	return bResult;
+}
+// OX3609 {
+function validateUserPasswordPolicy(objForm, strName, strErrMsg, bReturnValue) {
+	var bResult = false;
+	var strPassword = objForm[strName].value;
+	var RegExp = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\*\$\@\&\(\)\[\]\{\}\=\#\.\-\!\?\+\/\£\€\%])[a-zA-Z\d\*\$\@\&\(\)\[\]\{\}\=\#\.\-\!\?\+\/\£\€\%]{8,20}$/;
+	if (strPassword.length >= 0) {
+		if (RegExp.test(strPassword)) {
+			bResult = true;
+		}
+	}
+	if (bResult == false) {
+		objForm[strName].focus();
+		if (bReturnValue == true) {
+			return bResult;
+		} else {
+			alert(strErrMsg);
+		}
+	}
+	return bResult;
+}
+// Segment 1 = 8, 20 alpha sans accents et/ou carac spé
+// Segment 2 = au moins 1 MAJUSCULE
+// Segment 3 = au moins 1 minuscule
+// Segment 4 = au moins 1 chiffre
+// Segment 5 = au moins 1 carac spé
+function validateUserPasswordPolicyBySegment(strPassword, nSegment) {
+	var bResult = false;
+	var RegExp;
+	if (strPassword.length >= 0) {
+		bResult = true;
+		switch (nSegment) {
+			case 1:
+				// MinMax authorized caracs
+				RegExp = /^[a-zA-Z\d\*\$\@\&\(\)\[\]\{\}\=\#\.\-\!\?\+\/\£\€\%]{8,20}$/;
+				break;
+			case 2:
+				// at least 1 UPPER
+				RegExp = /(?=.*[A-Z])/;
+				break;
+			case 3:
+				// at least 1 lower
+				RegExp = /(?=.*[a-z])/;
+				break;
+			case 4:
+				// at least 1 digit
+				RegExp = /(?=.*\d)/;
+				break;
+			case 5:
+				// at least 1 special char
+				RegExp = /(?=.*[\*\$\@\&\(\)\[\]\{\}\=\#\.\-\!\?\+\/\£\€\%])/;
+				break;
+			default:
+				bResult = false;
+		}
+		//console.log(RegExp);
+		if (bResult)
+			bResult = RegExp.test(strPassword);
+	}
+	return bResult;
+}
+function checkRealTimePasswordPolicy(strCtrlPassword) {
+	var objForm = document.MForm;
+	var strPassword = objForm[strCtrlPassword].value;
+	// console.log(strPassword);
+	for (var i = 1; i <= 5; i++) {
+		bResult = validateUserPasswordPolicyBySegment(strPassword, i);
+		// console.log(bResult);
+		decorateSegmentPolicy(i, bResult);
+	}
+}
+function decorateSegmentPolicy(nSegment, bMatch) {
+	var strCtrl;
+	switch (nSegment) {
+		case 1:
+			// MinMaxAuthorized caracs
+			strCtrl = "PwdPolicyMinMax";
+			break;
+		case 2:
+			// at least 1 UPPER
+			strCtrl = "PwdPolicyUpper";
+			break;
+		case 3:
+			// at least 1 lower
+			strCtrl = "PwdPolicyLower";
+			break;
+		case 4:
+			// at least 1 digit
+			strCtrl = "PwdPolicyDigit";
+			break;
+		case 5:
+			// at least 1 special char
+			strCtrl = "PwdPolicySpecial";
+			break;
+	}
+	if (strCtrl.length >= 0) {
+		if (bMatch)
+			toggleSegmentName(strCtrl, "PolicyChecked", bMatch);
+		else
+			toggleSegmentName(strCtrl, "PolicyNotChecked");
+	}
+}
+function toggleSegmentName(strElement, strClassName, bMatch) {
+	document.getElementById(strElement).className = strClassName;
+	if (bMatch)
+		document.getElementById("symbol" + strElement).innerHTML = "&#10004;&nbsp;&nbsp;";
+	else
+		document.getElementById("symbol" + strElement).innerHTML = "&#10008;&nbsp;&nbsp;";
+}
+// } OX3609
+function ValidateNumber(objForm,strName,fMin,fMax,strErrMsg, fnOnError) {
+	var bResult=true;
+	var Value = objForm[strName].value.replace(/\s/gi, "");
+	if ( Value.length > 0 ){ 
+		Value = Value.replace( /,/gi, "." );
+		Value = parseFloat(Value);
+		if (isNaN(Value) || (Value < fMin) || (Value > fMax)) {
+			bResult = false;
+		}
+	}
+	if ( !bResult ) {
+		if (fnOnError) fnOnError(objForm[strName]);
+		alert(strErrMsg);
+		try {
+			objForm[strName].focus();
+		} catch (err) { }
+	}
+	return bResult;
+}
+function ValidateChars(objForm, strName, nMinLen, nMaxLen, strValidChars, strErrMsg, fnOnError) {
+	var bResult=true;
+	var strValue=objForm[strName].value;
+	var nLen = strValue.length ;
+	if ((nMinLen!=null)&&(nMinLen>0))
+		if (nLen< nMinLen) bResult=false;
+	if ((nMaxLen!=null)&&(nMaxLen>0))
+		if (nLen> nMaxLen) bResult=false;
+	if (bResult && (nLen>0)){
+		for( var i = 0 ; (i < nLen) && bResult ; i++ )
+			if ( strValidChars.indexOf(strValue.charAt(i)) < 0 ) bResult=false;
+	}
+	if ( !bResult ) {
+		if (fnOnError) fnOnError(objForm[strName]);
+		alert(strErrMsg);
+		try {
+			objForm[strName].focus();
+		} catch (err) { }
+	}
+	return bResult;
+}
+function ValidateEditCtrl(objForm, strName, bRequired, nMaxLength, strRegExp, strErrMsg, fnOnError) {
+	var bResult = true;
+	var strValue = objForm[strName].value;
+	var TempVar = strValue.replace(/\s/gi,"");
+	if (!bRequired && (TempVar.length == 0)) bResult = true;
+	else{
+		if (bRequired && (TempVar.length == 0)) bResult = false;
+		if (bResult && (nMaxLength != "") && (strValue.length > nMaxLength)) bResult = false;
+		if (bResult && (strRegExp != "") && (!strRegExp.test(strValue))) bResult = false;
+	}
+	if (!bResult){
+		if (fnOnError) fnOnError(objForm[strName]);
+		alert(strErrMsg);
+		try {
+			objForm[strName].focus();
+		} catch(err) { }
+	}
+	return bResult;
+}
+function ValidateEMailCtrl(objForm, strName, bRequired, nMaxLength, strErrMsg, fnOnError, strTarget) {
+	var bResult = true;
+	var strValue = objForm[strName].value;
+	if (strValue.length > 0){
+		while(''+strValue.charAt(strValue.length-1) == ' ') strValue=strValue.substring(0,strValue.length-1);
+		while(''+strValue.charAt(0) == ' ') strValue = strValue.substr(1,strValue.length-1);
+		objForm[strName].value = strValue;
+	}
+	if (bRequired&&(strValue.length == 0)) bResult=false;
+	else if (strValue.length > nMaxLength) bResult=false;
+	else if (strValue.length > 0){ 
+		while( ( strValue.length > 0) && (bResult)){
+			var sEMail; var nIdx=strValue.indexOf(";");
+			if (nIdx>-1){
+				sEMail=strValue.substr(0,nIdx);
+				strValue=strValue.substr(nIdx+1);
+			}
+			else{
+				sEMail=strValue;
+				strValue="";
+			}
+			var nEMailLen=sEMail.length;
+			if (sEMail.indexOf("..") !== -1) {
+				bResult = false;
+			}
+			var nIdxAT=sEMail.indexOf("@");
+			var nIdxDOT=sEMail.indexOf(".");
+			if (nEMailLen>0){
+				var strValidEMailChars="@.-+_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+				for(var i=0; (i< nEMailLen) && bResult;i++)
+					if ( strValidEMailChars.indexOf(sEMail.charAt(i)) < 0 ) bResult=false;
+			}
+			if ((bResult)&&(nIdxAT==-1 || nIdxAT==0 || nIdxAT==(nEMailLen-1))) bResult=false;
+			if ((bResult)&&(nIdxDOT==-1 || nIdxDOT==0 || nIdxDOT==(nEMailLen-1))) bResult=false;
+			if ((bResult)&&(sEMail.indexOf("@",(nIdxAT+1))!=-1)) bResult=false;
+			if ((bResult)&&(sEMail.substring(nIdxAT-1,nIdxAT)=="." || sEMail.substring(nIdxAT+1,nIdxAT+2)==".")) bResult=false;
+			if ((bResult)&&(sEMail.indexOf(".",(nIdxAT+2))==-1)) bResult=false;
+			if (bResult && (sEMail.substring(nEMailLen - 1, nEMailLen) === ".")) bResult = false; // . at end
+		}
+	}
+	if ( !bResult ) {
+		if (fnOnError) fnOnError(objForm[strName]);
+		if(strTarget) {
+		}else{
+			alert(strErrMsg);
+		}
+		try {
+			objForm[strName].focus();
+		} catch (err) { }
+	}
+	return bResult;
+}
+function ValidateDateTimeCtrl(objForm, strName,bRequired,bEnableTime,strErrMsg,fnOnError){
+	var bResult=true;
+	var TempVar=/^\d{4}$/;
+	var nDay=objForm[strName+"D"].selectedIndex;
+	var nMonth=objForm[strName+"M"].selectedIndex -1;
+	var nYear=objForm[strName+"Y"].value.replace(/\s/gi,"");
+	if (!bRequired && ((nDay==0) && (nMonth==-1) && (nYear==""))) bResult=true;
+	else{
+		if ((nDay==0) || (nMonth==-1) || (!TempVar.test(nYear))) bResult=false;
+		if (bResult && (nYear < 1800)) bResult=false;
+		if (bResult){
+			var dtToCheck=new Date(nYear,nMonth,nDay); 
+			if (dtToCheck.getMonth() != nMonth) bResult=false; 
+		}
+	}
+	if (bEnableTime && bResult){
+		var nHR=objForm[strName+"HR"].value.replace(/\s/gi,"");
+		var nMN=objForm[strName+"MN"].value.replace(/\s/gi,"");
+		if (!bRequired && ((nHR=="") && (nMN==""))) bResult=true;
+		else{
+			if ((nHR=="") || (nMN=="")) bResult=false;
+			else{
+				TempVar=/^\d{1,2}$/;
+				if ((!TempVar.test(nHR)) || (!TempVar.test(nMN))) bResult=false;
+				else if ((nHR>23) || (nMN>59)) bResult=false;
+			}
+		}
+	}
+	if (!bResult){
+		if (fnOnError) fnOnError(objForm[strName + "D"]);
+		alert(strErrMsg);
+		try {
+			objForm[strName+"D"].focus();
+		} catch (err) { }
+	}
+	return bResult;
+}
+function jsTrim( strString ) { return strString.replace(/^\s+|\s+$/g, ''); }
+function ValidateZipCode(objForm, strCtrlCountry, strCtrlZipCode, strMsg, fnOnError) {
+	var bResult = false
+	var nSelectedIdx, nSelectedValue, strCountryInfo, nCountryCode, nIdx, strZipCode ;
+	strCountryInfo = objForm[strCtrlCountry].value;
+	nIdx = strCountryInfo.indexOf( "]|[" );
+	if ( nIdx >= 0 ) strCountryInfo = strCountryInfo.substr(0,nIdx);
+	nCountryCode = parseInt(strCountryInfo);
+	strZipCode = objForm[strCtrlZipCode].value;
+	//alert(strCountryInfo + ' | ' + strZipCode);
+	strZipCode = jsTrim( strZipCode );
+	if ((nCountryCode == 66) || (nCountryCode == 214) || (nCountryCode == 215) || (nCountryCode == 221) || (nCountryCode == 222) || (nCountryCode == 223) || (nCountryCode == 224) || (nCountryCode == 225) || (nCountryCode == 226) || (nCountryCode == 227)) {
+		//if ( (strZipCode.length == 5) || (!isNaN(strZipCode)) ) bResult = true ; // 12.00 pass this test.
+		var objRegEx = new RegExp(/^([0-9]{5})$/);
+		if ( objRegEx.test(strZipCode) ) {
+			var strZipPrefix = strZipCode.substring(0, 2);
+			if ((strZipPrefix == '97') || (strZipPrefix == '98')) {
+				if (nCountryCode != 66) {
+					bResult = true;
+				} else {
+					if (strZipCode == '98000') bResult = true; // Monaco exception
+				}
+			} else {
+				if (nCountryCode == 66) bResult = true;
+			}
+		}
+	} else {
+		if (strZipCode.length > 0) bResult = true ;
+	}
+	if(!bResult){
+		if (fnOnError) fnOnError(objForm[strCtrlZipCode]);
+		alert(strMsg);
+		try {
+			objForm[strCtrlZipCode].focus();
+		} catch (err) { }
+	}
+	return bResult;
+}
+function ValidateMultiSelect(objForm, strName, strErrMsg, fnOnError) {
+	var bResult=true;
+	var TempVar=0;
+	var objOptions=objForm[strName].options;
+	for (var nIdx=0;nIdx< objOptions.length;nIdx++){
+		if (objOptions[nIdx].selected) TempVar++;
+	}
+	if (TempVar==0){
+		if (fnOnError) fnOnError(objForm[strName]);
+		alert(strErrMsg);
+		try {
+			objForm[strName].focus();
+		} catch (err) { }
+		bResult = false;
+	}
+	return bResult;
+}
+function ValidateVATNumber(objForm, strName, strErrMsg, fnOnError) {
+	var bResult = true;
+	var CT_EEC_VATNUMBER_ROOT = "DE,AT,BE,DK,ES,FI,FR,EL,IE,IT,LU,NL,PT,GB,SE,CY,CZ,EE,HU,LT,LV,MT,PL,SI,SK";
+	TempVar = objForm[strName].value;
+	TempVar = TempVar.replace( / /gi, "" );
+	if ( TempVar.length > 0 ){
+		bResult = false ;
+		if ( TempVar.length >= 10 ){
+			var strCountry, strCountries = CT_EEC_VATNUMBER_ROOT;
+			strCountry = TempVar.substr( 0, 2 );
+			strCountry = strCountry.toUpperCase()
+			if ( strCountries.indexOf(strCountry) >= 0 )
+				bResult = true ;
+		}
+	}
+	if (!bResult) {
+		if (fnOnError) fnOnError(objForm[strName])
+		alert(strErrMsg);
+		try {
+			objForm[strName].focus();
+		} catch (err) { }
+	}
+	return bResult;
+}

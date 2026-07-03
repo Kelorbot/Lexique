@@ -1,0 +1,310 @@
+#bodycolumn1{
+    display: none;
+}
+#bodycolumn2{
+    margin: 0;
+}
+
+
+/*dimensions (à mettre à jour)*/
+
+#expDiaporama {
+    width:960px;
+    height:310px;
+}
+
+
+#expDiaporama .diaporama_blockText{
+    display: block;
+    width:960px;
+    height:284px;
+    position: relative;
+}
+
+#expDiaporama .diaporama_blockText .PBShortTxt{
+    display: block;
+    width:440px;
+    position: absolute;
+    padding: 15px;
+    background-image: url("../../../Files/16323/_img-home/opac.png");
+    background-position: center bottom;
+    background-repeat: repeat;
+    color: #fff;
+    top: 200px;
+    left: 20px;
+    -webkit-border-radius: 10px;
+    -moz-border-radius: 10px;
+    border-radius: 10px;
+    font-size: 15px
+}
+
+#expDiaporama .diaporama_blockText .PBSTitle{
+    display: block;
+    position: absolute;
+    color: #fff;
+    top: 150px;
+    left: 20px;
+    font-size: 45px;
+    font-family: '4990810regular';
+    font-weight: normal;
+    text-shadow: 3px 3px 2px rgba(0, 0, 0, 1);
+
+}
+
+#expDiaporama .diaporama_blockText img{
+    display: block;
+    position: absolute;
+    top: -4px;
+    right: -4px;
+}
+
+
+/****************************/
+
+#expDiaporama {
+    display:block;
+}
+
+
+#expDiaporama a.tagLinks{
+    background-color: transparent;
+    margin-left: 4px;
+    margin-right: 4px;
+    height: 64px;
+    width: 102px;
+}
+
+#expDiaporama a.taghighlighted{
+
+}
+
+#expDiaporama .tagListElements{
+    float:left;
+} 
+
+#expDiaporama .tagsList {
+    right: 10px;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    bottom : 10px;
+    z-index: 80;
+    _width : 300px;
+}
+
+
+/****/
+
+#tabs_container .tagListElements{
+    display: inline-block;
+    *display:inline;
+    margin: 0 1px 0 0;   
+}
+
+#tabs_container .tagLinks {
+    cursor: pointer;
+    display: inline-block;
+    padding: 0 0px 0 0;
+}
+
+#tabs_container .tagsList {
+    position: relative;
+    z-index: 200;
+}
+
+#tabs_container .tagLinks font {
+    display: inline-block;
+    line-height: 26px;
+    padding: 0 10px;
+    white-space: nowrap;
+}
+
+#tabs_container .tagsListZone {
+    border-top: 3px solid #333333;
+    position: relative;
+    top: -18px;
+}
+
+
+#tabs_container .taghighlighted, #tabs_container a.tagLinks:hover {
+    background-color: transparent;
+    background-image: url("../../../Files/16323/_img-home/prodArrow.png");
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    height: 44px;
+}
+
+#tabs_container .taghighlighted font, #tabs_container a.tagLinks:hover font {
+    background-position: right top;
+    color: #33;
+}
+
+#tabs_container .wbTabs_td  {
+    background-image: url("https://www.masquesdecatch.com/Files/16323/_img-home/prodBlockBg.jpg");
+    background-position: center bottom;
+    background-repeat: repeat-x;
+}
+
+#tabs_container .tagsListZone, #tabs_container .tagsZone{
+    padding:4px;
+}
+
+#tabs_container .tabsTD {
+    padding:0;
+}
+
+#tabs_container .tagsListZone, #tabs_container .tagsZone {
+    height: auto;
+    width: auto;
+}
+
+
+
+.blockFeeds{
+    width: 436px;
+    height: 506px;
+    background-image: url('../../../Files/16323/_img-home/fbFeedsBg.jpg');
+    background-position: top center;
+    background-repeat: no-repeat;
+}
+
+
+.rssBody > ul {
+    list-style: none outside none;
+    margin: 0;
+    padding: 0 50px 0 30px;
+    text-align: left;
+}
+
+
+.rssRow {
+    border-bottom: 3px solid #333333;
+    padding: 10px 0;
+}
+
+.rssRow a {
+    color: #333333;
+    font-family: georgia;
+    font-size: 14px;
+}
+
+
+.rssRow > div {
+    font-size: 11px;
+    font-style: italic;
+    text-align: right;
+}
+
+.rssHeader {
+    height: 110px;
+}
+
+.rssHeader a {
+    display: none;
+}
+
+
+.titleBlock{
+    color: #d22f2f;
+    display: block;
+    font-family: '4990810regular';
+    font-size: 28px;
+    font-weight: normal;
+}
+
+
+
+.cellProd{
+    width: 150px;
+    height: 230px;
+    position: relative;
+    background-image: url('../../../Files/16323/_img-home/prodBg.png');
+    background-position: top center;
+    background-repeat: repeat;
+    overflow: hidden;
+    display: block;
+}
+
+.cellProd .titleProd .PBSTitle {
+    font-size: 12px;  
+    font-family: georgia;
+    font-weight: normal;
+    color: #555;
+}
+
+.cellProd .titleProd{
+    height: 50px;
+} 
+
+.cellProd .imgProd{
+    height: 120px;
+}
+
+.cellProd .imgProd img{
+    height: 100px;
+}
+
+
+.cellProd .priceProd{
+    font-size: 12px;
+    background-image: url('../../../Files/16323/_img-home/prodPriceBg.png');
+    background-position: center center;
+    background-repeat: no-repeat;
+    height: 44px;
+    width: 133px;
+}
+
+.cellProd .priceProd .PBCurrency{
+        color: #fff;
+     font-family: '4990810regular';
+     font-weight: normal;
+     text-shadow: 2px 2px 2px #888;
+     font-size: 22px;
+}
+
+.cellProd .descProd{
+    position: absolute;
+    background-image: url('../../../Files/16323/_img-home/opac.png');
+    background-position: top center;
+    background-repeat: repeat;
+    width: 150px;
+    height: 230px;
+    display: block;
+    top: 230px;
+    left: 0px;
+}
+
+
+.cellProd .descProd .PBMainTxt{
+    color: #fff;
+    font-size: 11px;
+    display: block;
+    height: 170px;
+    text-align: justify;
+    margin: 10px;
+}
+
+
+
+.cellProd .descProd a .PBMainTxt{
+    height: auto;
+    font-family: '4990810regular';
+    font-size: 18px;
+    font-weight: normal;
+
+}
+
+.wbTabs_td .wSep{
+    width: 5px;
+    
+}
+
+
+a.linkDiapo{
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    }

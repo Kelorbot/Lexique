@@ -1,0 +1,130 @@
+function ToggleClassName(strElement, strClassName) {
+	var strCurrentClassName = document.getElementById(strElement).className,
+		RegExp = /loginInfoError/g,
+		bReplaceClassName = true;
+	if ( strClassName == strCurrentClassName ) bReplaceClassName = false;
+	if( bReplaceClassName == true ) {
+		if ( RegExp.test(strClassName) ) {
+			document.getElementById('span' + strElement).style.display = 'none';
+			document.getElementById('span' + strElement + 'Error').style.display = 'block';
+		} else {
+			document.getElementById('span' + strElement).style.display = 'block';
+			document.getElementById('span' + strElement + 'Error').style.display = 'none';
+		}
+		document.getElementById(strElement).className = strClassName;
+	}
+}
+function ProcessUserAnonymous() {
+	var objForm = document.MFormUserAnonymous;
+	objForm.submit();
+}
+function ProcessLogin(strErrorMSG) {
+	var objForm = document.MForm;
+	bResult = ValidateEMailCtrl(objForm, "EMail", true, 255, strErrorMSG, false, 'EmailTarget');
+	if (!bResult) {
+		var RegExp = /^[a-z0-9\-]{1,50}$/gi; // Customer Code Same reg in ADTblUser
+		bResult = document.getElementById("ValidationUserLogin").getAttribute("data-customerCode") === "yes" ? RegExp.test(objForm['EMail'].value) : false;
+	}
+
+	if (bResult == true) {
+		objForm.submit();
+	} else {
+		ToggleClassName('Email', 'loginInfo loginInfoMail loginInfoError');
+	}
+}
+function ProcessCustomerCodeLoginByEmail(userEmail) {
+	var objForm = document.MForm;
+	objForm['EMail'].value = userEmail;
+	objForm.submit();
+}
+function ProcessTwitter(strErrorMSG) {
+	var objForm = document.MForm;
+	bResultEmail = ValidateEMailCtrl(objForm, "EMail", true, 255, strErrorMSG, false, 'EmailTarget');
+	if ( bResultEmail == true ) {
+		ToggleClassName('Email', 'loginInfo loginInfoMail');
+	} else {
+		ToggleClassName('Email', 'loginInfo loginInfoMail loginInfoError');
+	}
+	bResultPWD = validatePassword(objForm, 'Password', strErrorMSG, true);
+	if ( bResultPWD == true ) {
+		ToggleClassName('PWD', 'loginInfo loginInfoPwd');
+	} else {
+		ToggleClassName('PWD', 'loginInfo loginInfoMail loginInfoError');
+	}
+	if ( bResultEmail == false ) objForm['EMail'].focus();
+	if ( bResultEmail == true && bResultPWD == true ) {
+		objForm.submit();
+	}
+}
+function ProcessInscription(strErrorMSG) {
+	var objForm = document.MForm2;
+	bResult = ValidateEMailCtrl(objForm, "EMail", true, 255, strErrorMSG, false, 'PBErrMsg' );
+	if ( bResult == true ) {
+		objForm.submit();
+	} else {
+		ToggleClassName('InscriptionEmail', 'loginInfo loginInfoMail loginInfoError');
+	}
+}
+function ProcessPassword(nActionID, strErrorMSG) {
+	var bResult = false;
+	var objForm = document.MForm;
+	if (objForm['EMail'].value.length > 0) {
+		bResult = ValidateEMailCtrl(objForm, "EMail", true, 255, strErrorMSG, false, 'PBErrMsg');
+		if (bResult == true) {
+			objForm.ActionID.value = nActionID;
+			objForm.submit();
+		}
+	}
+	if(!bResult){
+		ToggleClassName('Email', 'loginInfo loginInfoMail loginInfoError');
+	}
+}
+function ProcessSaveUser(strErrorInvalidPWD, strErrorConfirm, strConfirmName) {
+	var objForm = document.MForm,
+	strPWD = objForm['Password'].value,
+	strPWDConfirm = objForm['PasswordConfirm'].value;
+	// bResult = validatePassword(objForm, 'Password', strErrorInvalidPWD, true);
+	bResult = validateUserPasswordPolicy(objForm, 'Password', strErrorInvalidPWD, true);
+	if ( bResult == true ) {
+		if ( strPWD == strPWDConfirm ) {
+			objForm.submit();
+		} else {
+			objForm['PasswordConfirm'].focus();
+			ToggleClassName('PWDConfirm', 'loginInfo loginInfoPwd loginInfoError');
+			ToggleClassName('PWD', 'loginInfo loginInfoPwd');
+		}
+	} else {
+		ToggleClassName('PWD', 'loginInfo loginInfoPwd loginInfoError');
+		ToggleClassName('PWDConfirm', 'loginInfo loginInfoPwd');
+	}
+}
+function CheckPasswordConfirmation( e, strErrorMSG, nActionID, strErrorInvalidPWD, strErrorConfirm, strConfirmName ) {
+	var nkeycode = e.keyCode ? e.keyCode : e.charCode,
+		objForm = document.MForm,
+		strPWD = objForm['Password'].value,
+		strPWDConfirm = objForm['PasswordConfirm'].value;
+	if ( strPWDConfirm.length > 3 ) {
+		if ( nkeycode == 13 ) {
+			ProcessSaveUser(strErrorInvalidPWD, strErrorConfirm, strConfirmName);
+		}else{
+			if ( strPWDConfirm == strPWD ) {
+				ToggleClassName('PWDConfirm', 'loginInfo loginInfoPwd');
+			} else {
+				ToggleClassName('PWDConfirm', 'loginInfo loginInfoPwd loginInfoError');
+			}
+		}
+	}
+}
+function ProcessEnterKey( e, strErrorMSG, nActionID, strErrorInvalidPWD, strErrorConfirm, strConfirmName ) {
+	var nkeycode = e.keyCode ? e.keyCode : e.charCode
+	if ( nkeycode == 13 ) {
+		if ( nActionID == 1 ) {
+			ProcessLogin(strErrorMSG);
+		} else if (nActionID == 2 || nActionID == 9) {
+			ProcessSaveUser(strErrorInvalidPWD, strErrorConfirm, strConfirmName);
+		} else if ( nActionID == 7 ) {
+			ProcessTwitter(strErrorMSG);
+		}
+	}
+	return true ;
+}
